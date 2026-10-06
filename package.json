@@ -1,0 +1,25 @@
+{
+  "name": "aetherflood-copilot",
+  "version": "1.0.0",
+  "description": "AetherFlood Copilot - Emergency Satellite & Infrastructure SITREP Engine",
+  "main": "run.py",
+  "scripts": {
+    "dev": "python run.py",
+    "start": "python run.py",
+    "backend": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload",
+    "frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  },
+  "keywords": [
+    "disaster-response",
+    "satellite-sar",
+    "copernicus",
+    "sentinel-1",
+    "openstreetmap",
+    "fastapi",
+    "react",
+    "vite"
+  ],
+  "author": "",
+  "license": "MIT"
+}
