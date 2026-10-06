@@ -8,3 +8,5 @@
 1. 'python run.py
 
 ##just run the run.bat file
+
+## paste satellite folder in \frontend\public
