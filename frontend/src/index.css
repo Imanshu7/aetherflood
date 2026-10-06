@@ -1,62 +1,65 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Humanitarian Relief & Psychological Safety Palette:
-     Designed specifically for disaster management to evoke safety, calm authority, and clarity.
-     Predominantly White & Clean (>80% canvas):
-     - #FFFFFF: Main Canvas & Cards (Airy, serene, stress-free baseline)
-     - #F8FAF9: Soft Porcelain (Subtle wells, inputs, secondary bubbles)
-     - #E2E8F0: Soft Slate Border (Gentle demarcation without visual noise)
-     - #163832: Deep Pine Sanctuary (Authoritative, reassuring, grounded command sidebar & primary buttons)
-     - #245E53: Spruce Teal (Active navigation, focus highlights, stable anchor)
-     - #15803D: Reassurance Emerald (Safe hospital hubs, verified data, operational health)
-     - #ECFDF5: Soft Sanctuary Green Tint (Safe status wells, verified chips)
-     - #0284C7: Serene River Azure (SAR water polygon, radar telemetry, calm water monitoring)
-     - #F0F9FF: Soft River Tint (Water info chips, radar badges)
-     - #BE123C: Caring Terracotta Rose (Severed roads, cut-off towns - clear hazard without panic)
-     - #FFF1F2: Soft Rose Tint ("WHO IS CUT OFF?" card background, urgent assistance wells)
-     - #D97706: Warm Amber Ochre (Triage, caution)
-     - #0F172A: Deep Slate Charcoal (Crisp high-contrast legible headings and metrics)
-     - #475569: Soothing Slate Gray (Secondary descriptive telemetry text)
-  */
-  --bg-main: #FFFFFF;
-  --bg-subtle: #F1F5F9;
-  --bg-sidebar: #163832;
-  --bg-topbar: #FFFFFF;
-  --card-bg: #F1F5F9;
-  --card-bg-light: #E2E8F0;
-  --card-border: #CBD5E1;
-  --card-shadow: none;
+  /* ==========================================================================
+     Apple Design System Tokens (iOS / macOS Human Interface Guidelines)
+     - Primary: Action Blue (#0066cc)
+     - Primary Focus: #0071e3
+     - Primary on Dark: #2997ff
+     - Ink: #1d1d1f (Apple near-black)
+     - Body Muted: #86868b
+     - Hairline: rgba(0, 0, 0, 0.08)
+     - Divider Soft: #f0f0f0
+     - Canvas: #ffffff
+     - Canvas Parchment: #f5f5f7 (Signature Apple off-white baseline)
+     - Surface Pearl: #fafafc
+     - Border Radii: Card 18px (rounded.lg), Pill 9999px (rounded.pill), Sm 8px
+     ========================================================================== */
+  --bg-main: #f5f5f7;
+  --bg-subtle: #fafafc;
+  --bg-sidebar: #1d1d1f;
+  --bg-topbar: rgba(255, 255, 255, 0.82);
+  --card-bg: #ffffff;
+  --card-bg-light: #fafafc;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --card-border-subtle: rgba(0, 0, 0, 0.05);
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.07);
 
-  --theme-primary: #163832;
-  --theme-primary-hover: #245E53;
-  --theme-accent: #245E53;
-  --theme-safety: #15803D;
-  --theme-safety-bg: #ECFDF5;
-  --theme-water: #0284C7;
-  --theme-water-bg: #F0F9FF;
-  --theme-critical: #BE123C;
-  --theme-critical-bg: #FFF1F2;
-  --theme-warning: #D97706;
-  --theme-warning-bg: #FEF3C7;
+  --theme-primary: #0066cc;
+  --theme-primary-hover: #0071e3;
+  --theme-primary-active: #005bb5;
+  --theme-accent: #0066cc;
+  
+  --theme-safety: #34c759;
+  --theme-safety-bg: rgba(52, 199, 89, 0.10);
+  --theme-water: #0066cc;
+  --theme-water-bg: rgba(0, 102, 204, 0.08);
+  --theme-critical: #ff3b30;
+  --theme-critical-bg: rgba(255, 59, 48, 0.09);
+  --theme-warning: #ff9500;
+  --theme-warning-bg: rgba(255, 149, 0, 0.10);
 
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
+  --text-primary: #1d1d1f;
+  --text-secondary: #424245;
+  --text-muted: #86868b;
+  --text-on-dark: #ffffff;
 
-  --sidebar-active: #245E53;
-  --sidebar-active-text: #FFFFFF;
-  --sidebar-text: #E6F4F1;
-  --sidebar-text-muted: #8EBAAF;
-  --sidebar-border: #2D544C;
+  --sidebar-active: #0066cc;
+  --sidebar-active-text: #ffffff;
+  --sidebar-text: #f5f5f7;
+  --sidebar-text-muted: #86868b;
+  --sidebar-border: rgba(255, 255, 255, 0.10);
 
-  --pill-bg: #F8FAF9;
-  --pill-active: #163832;
-  --pill-active-text: #FFFFFF;
+  --pill-bg: #ffffff;
+  --pill-active: #0066cc;
+  --pill-active-text: #ffffff;
 
-  --border-radius-card: 12px;
-  --border-radius-pill: 4px;
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --border-radius-card: 18px;
+  --border-radius-pill: 9999px;
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Inter", sans-serif;
 }
 
 * {
@@ -73,22 +76,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   font-size: 13px;
+  letter-spacing: -0.012em;
 }
 
-/* Custom Scrollbars */
+/* Custom Minimal Apple Scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background-color: #F8FAFD;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #CBD5E1;
-  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.16);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #7CB8FF;
+  background-color: rgba(0, 0, 0, 0.28);
 }
 
 /* App Container Layout */
@@ -99,7 +103,7 @@ body {
   background-color: var(--bg-main);
 }
 
-/* Left Sidebar (Solid Dark Azure #003459) */
+/* Left Sidebar (macOS style dark sidebar) */
 .sidebar {
   width: 240px;
   background-color: var(--bg-sidebar);
@@ -110,7 +114,7 @@ body {
   flex-shrink: 0;
   min-height: 100vh;
   border-right: 1px solid var(--sidebar-border);
-  transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1), padding 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.24s cubic-bezier(0.25, 0.1, 0.25, 1), padding 0.24s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: width;
   position: relative;
   overflow: hidden;
@@ -123,7 +127,7 @@ body {
   align-items: center;
 }
 
-/* Sidebar Brand & Single Canonical Toggle */
+/* Sidebar Brand Header */
 .sidebar-brand-header {
   display: flex;
   align-items: center;
@@ -151,63 +155,65 @@ body {
 }
 
 .brand-main {
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  color: #ffffff;
 }
 
 .brand-sub {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #8EBAAF;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
 }
 
 .live-pulse-icon {
-  color: #10B981;
+  color: #34c759;
   animation: pulse-ring 2.4s infinite ease-in-out;
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0% { transform: scale(0.96); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.96); opacity: 0.85; }
 }
 
 .sidebar-toggle-btn {
-  background-color: #0E2420;
-  border: 1px solid #2D544C;
-  color: #8EBAAF;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
   flex-shrink: 0;
 }
 
 .sidebar-toggle-btn:hover {
-  background-color: #245E53;
-  color: #FFFFFF;
-  border-color: #245E53;
-  transform: scale(1.06);
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Unified Single Account Card */
+.sidebar-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* Single Account Card */
 .user-profile-badge {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background-color: #0E2420;
-  padding: 6px 10px;
-  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.06);
+  padding: 8px 12px;
+  border-radius: var(--border-radius-sm);
   margin-bottom: 16px;
-  border: 1px solid #2D544C;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.2s;
   overflow: hidden;
 }
@@ -218,25 +224,25 @@ body {
   gap: 0;
   width: 42px;
   height: 42px;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
 }
 
 .user-profile-badge:hover {
-  border-color: #8EBAAF;
+  background-color: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .user-avatar-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background-color: #245E53;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background-color: #0066cc;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  color: #FFFFFF;
+  font-weight: 600;
+  color: #ffffff;
   font-size: 11px;
-  border: 1.5px solid #8EBAAF;
   flex-shrink: 0;
 }
 
@@ -253,9 +259,9 @@ body {
 }
 
 .user-name {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  color: #FFFFFF;
+  color: #ffffff;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -263,7 +269,7 @@ body {
 
 .user-email {
   font-size: 10px;
-  color: #8EBAAF;
+  color: var(--text-muted);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -272,7 +278,7 @@ body {
 .user-logout-inline {
   background-color: transparent;
   border: none;
-  color: #8EBAAF;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -283,15 +289,18 @@ body {
 }
 
 .user-logout-inline:hover {
-  color: #FFFFFF;
-  background-color: #BE123C;
+  color: #ff3b30;
+}
+
+.user-logout-inline:active {
+  transform: scale(0.95);
 }
 
 /* Navigation items */
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
@@ -299,13 +308,13 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--border-radius-pill);
-  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 13px;
   font-weight: 500;
-  color: #E6F4F1;
+  color: #d2d2d7;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
   border: 1px solid transparent;
   background-color: transparent;
   width: 100%;
@@ -315,7 +324,7 @@ body {
 
 .sidebar.collapsed .nav-item {
   justify-content: center;
-  padding: 9px;
+  padding: 8px;
   gap: 0;
 }
 
@@ -324,27 +333,29 @@ body {
 }
 
 .nav-item:hover {
-  background-color: #0E2420;
-  color: #8EBAAF;
-  border-color: #2D544C;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 .nav-item.active {
-  background-color: #245E53;
-  color: #FFFFFF;
-  font-weight: 700;
-  border-color: #3B8777;
+  background-color: #0066cc;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-item:active {
+  transform: scale(0.97);
 }
 
 /* Compliance box */
 .compliance-box {
-  background-color: #0E2420;
-  border-radius: 6px;
-  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-sm);
+  padding: 10px 12px;
   margin-bottom: 12px;
-  font-size: 10px;
-  color: #E6F4F1;
-  border: 1px solid #2D544C;
+  font-size: 11px;
+  color: #e5e5ea;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all 0.2s ease;
 }
 
@@ -353,22 +364,22 @@ body {
   justify-content: center;
   align-items: center;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--border-radius-sm);
   width: 36px;
   height: 36px;
   margin: 0 auto 12px auto;
   cursor: pointer;
 }
 
-.sidebar.collapsed .compliance-box:hover {
-  border-color: #8EBAAF;
+.compliance-box:hover {
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .compliance-details {
   margin-top: 4px;
   line-height: 1.4;
-  color: #8EBAAF;
-  font-size: 9.5px;
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 .sidebar.collapsed .compliance-details {
@@ -378,8 +389,8 @@ body {
 .sidebar-bottom {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-top: 1px solid var(--sidebar-border);
+  gap: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 10px;
 }
 
@@ -389,27 +400,31 @@ body {
 
 .sidebar.collapsed .sidebar-bottom .nav-item {
   justify-content: center;
-  padding: 9px;
+  padding: 8px;
 }
 
-/* Main Content Area (Solid Pure White Canvas #FFFFFF) */
+/* ==========================================================================
+   Main Viewport & Apple Frosted Glass Top Bar
+   ========================================================================== */
 .main-viewport {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow-y: auto;
-  background-color: #FFFFFF;
+  background-color: var(--bg-main);
 }
 
-/* Top App Bar (Shifted Navigation & Command Header) */
+/* Apple Sub-Nav Frosted Glass Header */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 8px 24px;
-  background-color: #FFFFFF;
-  border-bottom: 1.5px solid var(--card-border);
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   gap: 20px;
   position: sticky;
   top: 0;
@@ -443,20 +458,29 @@ body {
 
 .top-bar-title {
   font-size: 14px;
-  font-weight: 700;
-  color: #0F172A;
-  letter-spacing: -0.2px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
 }
 
+/* Apple Search Input (rounded.pill, quiet border, soft background) */
 .top-bar-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #E2E8F0;
-  border: 1.5px solid var(--card-border);
-  padding: 6px 10px;
-  border-radius: 4px;
-  width: 175px;
+  background-color: rgba(118, 118, 128, 0.12);
+  border: 1px solid transparent;
+  padding: 6px 14px;
+  border-radius: var(--border-radius-pill);
+  width: 190px;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.top-bar-search:focus-within {
+  background-color: #ffffff;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+  width: 220px;
 }
 
 .top-bar-search input {
@@ -465,11 +489,12 @@ body {
   outline: none;
   font-size: 12px;
   width: 100%;
-  color: #0F172A;
+  color: var(--text-primary);
+  font-family: inherit;
 }
 
 .top-bar-search input::placeholder {
-  color: #64748B;
+  color: var(--text-muted);
   font-size: 11.5px;
 }
 
@@ -479,31 +504,35 @@ body {
   gap: 8px;
 }
 
+/* Apple Icon Button (circular or rounded.sm, active scale) */
 .icon-btn {
-  background-color: #E2E8F0;
-  border: 1.5px solid var(--card-border);
+  background-color: rgba(118, 118, 128, 0.10);
+  border: 1px solid transparent;
   width: 32px;
   height: 32px;
-  border-radius: 4px;
+  border-radius: var(--border-radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #163832;
-  transition: all 0.18s;
+  color: var(--text-primary);
+  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .icon-btn:hover {
-  background-color: #CBD5E1;
-  color: #0F172A;
-  border-color: #94A3B8;
+  background-color: rgba(118, 118, 128, 0.18);
+  color: #0066cc;
 }
 
-/* Page Content Container (Predominantly White #FFFFFF) */
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* Page Content Container */
 .page-container {
-  padding: 18px 26px;
+  padding: 20px 28px;
   flex: 1;
-  background-color: #FFFFFF;
+  background-color: var(--bg-main);
 }
 
 /* Filter Pill Row */
@@ -519,98 +548,121 @@ body {
 .filter-pill {
   padding: 6px 16px;
   border-radius: var(--border-radius-pill);
-  font-size: 11.5px;
-  font-weight: 600;
-  border: 1.5px solid var(--card-border);
-  background-color: #E2E8F0;
-  color: #334155;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background-color: #ffffff;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   white-space: nowrap;
 }
 
 .filter-pill:hover {
-  background-color: #CBD5E1;
-  color: #0F172A;
-  border-color: #94A3B8;
+  background-color: #f5f5f7;
+  color: var(--text-primary);
 }
 
 .filter-pill.active {
-  background-color: #163832;
-  color: #FFFFFF;
-  border-color: #163832;
+  background-color: #0066cc;
+  color: #ffffff;
+  border-color: #0066cc;
+  font-weight: 600;
 }
 
-/* High-Visibility Cards (#F1F5F9 Slate Porcelain) */
+.filter-pill:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================================
+   Apple Cards: Pure White, 18px Radius (rounded.lg), 1px Soft Hairline
+   ========================================================================== */
 .grey-card {
-  background-color: var(--card-bg);
+  background-color: #ffffff;
   border-radius: var(--border-radius-card);
-  padding: 16px 18px;
-  color: #0F172A;
-  border: 1.5px solid var(--card-border);
+  padding: 20px 22px;
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.grey-card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 
 .grey-card-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #0F172A;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
   margin-bottom: 12px;
-  letter-spacing: -0.1px;
+  letter-spacing: -0.015em;
 }
 
-/* Status Badges */
+/* Status Badges - Apple Soft Tint Chips */
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 3px 10px;
   border-radius: var(--border-radius-pill);
-  font-size: 10.5px;
-  font-weight: 600;
-  background-color: #E2E8F0;
-  color: #0F172A;
-  border: 1.5px solid var(--card-border);
+  font-size: 11px;
+  font-weight: 500;
+  background-color: rgba(118, 118, 128, 0.10);
+  color: var(--text-primary);
+  border: 1px solid transparent;
 }
 
-/* Pill Buttons (Solid Colors Only) */
+/* ==========================================================================
+   Apple Buttons (Primary Action Blue Pill & Secondary Ghost Pill)
+   ========================================================================== */
 .btn-black-pill {
-  background-color: #163832;
-  color: #FFFFFF;
+  background-color: #0066cc;
+  color: #ffffff;
   padding: 7px 18px;
   border-radius: var(--border-radius-pill);
-  border: 1.5px solid #163832;
-  font-size: 11.5px;
-  font-weight: 700;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: transform 0.15s, opacity 0.15s, background-color 0.2s;
+  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  letter-spacing: -0.01em;
 }
 
 .btn-black-pill:hover {
-  background-color: #245E53;
-  color: #FFFFFF;
-  border-color: #245E53;
-  transform: translateY(-1px);
+  background-color: #0071e3;
+  color: #ffffff;
+}
+
+.btn-black-pill:active {
+  transform: scale(0.96);
+  background-color: #005bb5;
 }
 
 .btn-white-pill {
-  background-color: #E2E8F0;
-  color: #0F172A;
+  background-color: #ffffff;
+  color: var(--text-primary);
   padding: 6px 14px;
   border-radius: var(--border-radius-pill);
-  border: 1.5px solid var(--card-border);
-  font-size: 11.5px;
-  font-weight: 600;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  letter-spacing: -0.01em;
 }
 
 .btn-white-pill:hover {
-  background-color: #CBD5E1;
-  border-color: #94A3B8;
-  color: #163832;
+  background-color: #f5f5f7;
+  border-color: rgba(0, 0, 0, 0.20);
+  color: #0066cc;
+}
+
+.btn-white-pill:active {
+  transform: scale(0.96);
 }
 
 /* Interactive Map Styling */
@@ -620,26 +672,29 @@ body {
   border-radius: var(--border-radius-card);
   overflow: hidden;
   position: relative;
-  border: 1.5px solid var(--card-border);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 
-/* Leaflet Map Light Theme Styling */
+/* Leaflet Map Light Theme Styling (Apple Crisp UI) */
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border: 2px solid #163832 !important;
-  box-shadow: none !important;
+  background-color: #ffffff !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
 }
 
 .leaflet-tooltip {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border: 1.5px solid #BE123C !important;
+  background-color: #ffffff !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 8px !important;
   font-weight: 600 !important;
-  box-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10) !important;
 }
 
-/* Copilot Chat Styling */
+/* Copilot Chat Styling (Apple iMessage aesthetic) */
 .copilot-split-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -648,29 +703,31 @@ body {
 }
 
 .chat-bubble-bot {
-  background-color: #E2E8F0;
-  color: #0F172A;
-  padding: 12px 16px;
-  border-radius: 4px;
-  font-size: 12.5px;
+  background-color: #ffffff;
+  color: var(--text-primary);
+  padding: 14px 18px;
+  border-radius: 18px 18px 18px 4px;
+  font-size: 13px;
   line-height: 1.5;
   max-width: 85%;
-  margin-bottom: 10px;
-  border: 1.5px solid var(--card-border);
+  margin-bottom: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .chat-bubble-user {
-  background-color: #163832;
-  color: #FFFFFF;
-  padding: 10px 14px;
-  border-radius: 4px;
-  font-size: 12.5px;
+  background-color: #0066cc;
+  color: #ffffff;
+  padding: 12px 18px;
+  border-radius: 18px 18px 4px 18px;
+  font-size: 13px;
   line-height: 1.5;
   max-width: 75%;
   margin-left: auto;
-  margin-bottom: 10px;
-  font-weight: 500;
-  border: 1.5px solid #163832;
+  margin-bottom: 12px;
+  font-weight: 400;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 6px rgba(0, 102, 204, 0.2);
 }
 
 /* Custom Div Icon for Leaflet */
@@ -679,14 +736,16 @@ body {
   border: none;
 }
 
-/* Modal Overlay & Dialogs (Predominantly White Shell) */
+/* Modal Overlay & Dialogs (Apple Sheet Blur) */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(1, 22, 39, 0.75);
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -694,14 +753,25 @@ body {
 }
 
 .modal-content {
-  background-color: #FFFFFF;
-  color: #011627;
-  border: 2px solid var(--card-border);
-  border-radius: var(--border-radius-card);
-  box-shadow: none;
+  background-color: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 22px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  max-width: 680px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.modal-content.auth-grid {
   display: grid;
   grid-template-columns: 240px 1fr;
   gap: 20px;
-  max-width: 680px;
-  width: 90%;
+}
+
+/* SAR Radar Simulation Tile Filter */
+.sar-tile-filter img {
+  filter: grayscale(90%) contrast(135%) brightness(95%);
 }

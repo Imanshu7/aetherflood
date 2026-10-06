@@ -100,12 +100,12 @@ export default function App() {
           {/* Left: Brand Identity Beacon */}
           <div className="top-bar-left">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <Radio size={16} color="#15803D" className="live-pulse-icon" />
+              <Radio size={16} color="#34c759" className="live-pulse-icon" />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: '800', letterSpacing: '0.06em', color: '#163832', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', letterSpacing: '-0.02em', color: '#1d1d1f', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
                   AETHERFLOOD
                 </div>
-                <div style={{ fontSize: '8.5px', fontWeight: '600', color: '#0284C7', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '9px', fontWeight: '500', color: '#0066cc', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                   COPILOT // LIVE
                 </div>
               </div>
@@ -118,13 +118,13 @@ export default function App() {
               items={navSegments}
               value={currentView}
               onChange={(val) => setCurrentView(val)}
-              trackColor="#E2E8F0"
-              thumbColor="#163832"
-              textColor="#334155"
-              activeTextColor="#FFFFFF"
+              trackColor="rgba(118, 118, 128, 0.12)"
+              thumbColor="#ffffff"
+              textColor="#636366"
+              activeTextColor="#1d1d1f"
               size="md"
-              radius={6}
-              inset={2}
+              radius={12}
+              inset={3}
               equalSlots={false}
               stretch={50}
               squash={2}
@@ -137,7 +137,7 @@ export default function App() {
           {/* Right: Search Box, Alert Actions, Operator Account Profile */}
           <div className="top-bar-right">
             <div className="top-bar-search">
-              <Search size={13} color="#245E53" />
+              <Search size={13} color="#86868b" />
               <input 
                 type="text" 
                 placeholder="Search incidents, telemetry..." 
@@ -158,12 +158,13 @@ export default function App() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '7px',
-                backgroundColor: '#E2E8F0',
-                border: '1.5px solid var(--card-border)',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                cursor: 'pointer'
+                gap: '8px',
+                backgroundColor: 'rgba(118, 118, 128, 0.08)',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                padding: '4px 12px 4px 6px',
+                borderRadius: '9999px',
+                cursor: 'pointer',
+                transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
               }}
               onClick={() => setIsAuthModalOpen(true)}
               title="Click to switch account"
@@ -171,22 +172,22 @@ export default function App() {
               <div style={{
                 width: '24px',
                 height: '24px',
-                borderRadius: '4px',
-                backgroundColor: '#163832',
-                color: '#FFFFFF',
+                borderRadius: '9999px',
+                backgroundColor: '#0066cc',
+                color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '10px',
-                fontWeight: '700'
+                fontWeight: '600'
               }}>
                 {currentUser ? currentUser.initials : 'RO'}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#0F172A', lineHeight: '1.2' }}>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f', lineHeight: '1.2' }}>
                   {currentUser ? currentUser.name : 'Sign In'}
                 </span>
-                <span style={{ fontSize: '9px', color: '#475569', lineHeight: '1.1' }}>
+                <span style={{ fontSize: '9px', color: '#86868b', lineHeight: '1.1' }}>
                   {currentUser ? currentUser.role : 'Observer'}
                 </span>
               </div>
@@ -199,7 +200,7 @@ export default function App() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#64748B',
+                    color: '#86868b',
                     cursor: 'pointer',
                     padding: '2px',
                     display: 'flex',

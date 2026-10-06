@@ -51,12 +51,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px', padding: '24px' }}>
+      <div className="modal-content auth-grid" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px', padding: '24px', borderRadius: '22px' }}>
         
-        {/* Left Stylized Solid Card */}
+        {/* Left Stylized Apple Surface Tile Card */}
         <div style={{
-          backgroundColor: '#163832',
-          borderRadius: '16px',
+          backgroundColor: '#272729',
+          borderRadius: '18px',
           padding: '24px 20px',
           display: 'flex',
           flexDirection: 'column',
@@ -64,13 +64,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           textAlign: 'center',
           justifyContent: 'space-between',
           color: '#FFFFFF',
-          border: '1.5px solid #2D544C'
+          border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#FFFFFF' }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '6px', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
               Disaster Relief & SITREP Briefing
             </h2>
-            <p style={{ fontSize: '11px', color: '#8EBAAF', lineHeight: '1.4' }}>
+            <p style={{ fontSize: '11px', color: '#86868b', lineHeight: '1.4' }}>
               Real-time monitoring and fast situational report generation
             </p>
           </div>
@@ -91,29 +91,29 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               width: '130px',
               height: '130px',
               borderRadius: '50%',
-              border: '1.5px dashed #2D544C'
+              border: '1.5px dashed rgba(255, 255, 255, 0.15)'
             }}></div>
             <div style={{
               position: 'absolute',
               width: '85px',
               height: '85px',
               borderRadius: '50%',
-              border: '1.5px solid #2D544C'
+              border: '1.5px solid rgba(255, 255, 255, 0.12)'
             }}></div>
 
             {/* Orbiting Sensor Nodes */}
-            <div style={{ position: 'absolute', top: '8px', right: '25px', width: '24px', height: '24px', borderRadius: '50%', background: '#0284C7' }}></div>
-            <div style={{ position: 'absolute', bottom: '10px', right: '18px', width: '30px', height: '30px', borderRadius: '50%', background: '#BE123C' }}></div>
-            <div style={{ position: 'absolute', top: '25px', left: '10px', width: '20px', height: '20px', borderRadius: '50%', background: '#15803D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '10px', fontWeight: 'bold' }}>!</div>
-            <div style={{ position: 'absolute', bottom: '22px', left: '20px', width: '22px', height: '22px', borderRadius: '50%', background: '#0E2420', border: '1px solid #245E53' }}></div>
+            <div style={{ position: 'absolute', top: '8px', right: '25px', width: '24px', height: '24px', borderRadius: '50%', background: '#0066cc', boxShadow: '0 2px 6px rgba(0, 102, 204, 0.4)' }}></div>
+            <div style={{ position: 'absolute', bottom: '10px', right: '18px', width: '30px', height: '30px', borderRadius: '50%', background: '#ff3b30', boxShadow: '0 2px 6px rgba(255, 59, 48, 0.4)' }}></div>
+            <div style={{ position: 'absolute', top: '25px', left: '10px', width: '20px', height: '20px', borderRadius: '50%', background: '#34c759', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '10px', fontWeight: 'bold' }}>!</div>
+            <div style={{ position: 'absolute', bottom: '22px', left: '20px', width: '22px', height: '22px', borderRadius: '50%', background: '#1d1d1f', border: '1px solid rgba(255, 255, 255, 0.2)' }}></div>
             
             {/* Center Radar Dish Icon */}
-            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#0E2420', border: '1.5px solid #245E53', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8EBAAF' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#1d1d1f', border: '1px solid rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF' }}>
               <Radio size={20} />
             </div>
           </div>
 
-          <div style={{ fontSize: '10.5px', color: '#E6F4F1', fontWeight: '600' }}>
+          <div style={{ fontSize: '11px', color: '#86868b', fontWeight: '500' }}>
             Live radar, sensors, and exposure KPIs
           </div>
         </div>
@@ -122,23 +122,23 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '4px 10px' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#163832' }}>AetherFlood Copilot</span>
-            <button onClick={onClose} className="icon-btn" style={{ width: '26px', height: '26px' }}>
-              <X size={14} />
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#0066cc', letterSpacing: '-0.01em' }}>AetherFlood Copilot</span>
+            <button onClick={onClose} className="icon-btn" style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#f5f5f7' }}>
+              <X size={14} color="#1d1d1f" />
             </button>
           </div>
 
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A', marginBottom: '3px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: '700', color: '#1d1d1f', marginBottom: '4px', letterSpacing: '-0.015em' }}>
               Operator Authentication
             </h2>
-            <p style={{ fontSize: '11px', color: '#64748B', marginBottom: '14px' }}>
+            <p style={{ fontSize: '11.5px', color: '#86868b', marginBottom: '16px' }}>
               Configure your command session credentials
             </p>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '10.5px', fontWeight: '600', color: '#011627', display: 'block', marginBottom: '3px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f', display: 'block', marginBottom: '4px' }}>
                   Full Name / Commander Call-sign:
                 </label>
                 <input 
@@ -148,20 +148,20 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={e => setForm({...form, name: e.target.value})}
                   required
                   style={{
-                    backgroundColor: '#F8FAFD',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: 'var(--border-radius-pill)',
-                    padding: '8px 14px',
-                    fontSize: '11.5px',
+                    backgroundColor: '#f5f5f7',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '9999px',
+                    padding: '9px 16px',
+                    fontSize: '12px',
                     outline: 'none',
                     width: '100%',
-                    color: '#011627'
+                    color: '#1d1d1f'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '10.5px', fontWeight: '600', color: '#011627', display: 'block', marginBottom: '3px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f', display: 'block', marginBottom: '4px' }}>
                   Official Agency Email:
                 </label>
                 <input 
@@ -171,34 +171,34 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                   onChange={e => setForm({...form, email: e.target.value})}
                   required
                   style={{
-                    backgroundColor: '#F8FAFD',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: 'var(--border-radius-pill)',
-                    padding: '8px 14px',
-                    fontSize: '11.5px',
+                    backgroundColor: '#f5f5f7',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '9999px',
+                    padding: '9px 16px',
+                    fontSize: '12px',
                     outline: 'none',
                     width: '100%',
-                    color: '#011627'
+                    color: '#1d1d1f'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '10.5px', fontWeight: '600', color: '#011627', display: 'block', marginBottom: '3px' }}>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f', display: 'block', marginBottom: '4px' }}>
                   Assigned Command Role:
                 </label>
                 <select 
                   value={form.role}
                   onChange={e => setForm({...form, role: e.target.value})}
                   style={{
-                    backgroundColor: '#F8FAFD',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: 'var(--border-radius-pill)',
-                    padding: '8px 14px',
-                    fontSize: '11.5px',
+                    backgroundColor: '#f5f5f7',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '9999px',
+                    padding: '9px 16px',
+                    fontSize: '12px',
                     outline: 'none',
                     width: '100%',
-                    color: '#011627'
+                    color: '#1d1d1f'
                   }}
                 >
                   <option value="Emergency Response Lead">Emergency Response Lead</option>
@@ -212,14 +212,14 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
               <button 
                 type="submit" 
                 className="btn-black-pill" 
-                style={{ width: '100%', justifyContent: 'center', padding: '9px', marginTop: '6px' }}
+                style={{ width: '100%', justifyContent: 'center', padding: '10px', marginTop: '8px', fontSize: '12px', fontWeight: '600' }}
               >
                 Authenticate Session
               </button>
             </form>
           </div>
 
-          <div style={{ marginTop: '12px', fontSize: '10px', color: '#5B7288', textAlign: 'center' }}>
+          <div style={{ marginTop: '14px', fontSize: '10.5px', color: '#86868b', textAlign: 'center' }}>
             Session authenticated with end-to-end telemetry verification.
           </div>
 

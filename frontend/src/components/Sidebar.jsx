@@ -159,7 +159,7 @@ export default function Sidebar({
       {/* Strict Hackathon Compliance Indicator */}
       <div 
         className="compliance-box"
-        title="Strict Hackathon Compliance: Sentinel-1 Track #121, OSM Snapshot 2026-07-27, Copernicus DEM <= 18°"
+        title="Official Hackathon Data Rules: Inputs restricted to Sentinel-1, Sentinel-2 L2A, Copernicus DEM, and pre-event OSM (<= 2026-07-27). EMSR927 benchmark is strictly isolated."
       >
         <div style={{ 
           display: 'flex', 
@@ -170,13 +170,14 @@ export default function Sidebar({
           justifyContent: isCollapsed ? 'center' : 'flex-start' 
         }}>
           <ShieldAlert size={isCollapsed ? 16 : 13} style={{ flexShrink: 0 }} />
-          {!isCollapsed && <span>Rules Enforced</span>}
+          {!isCollapsed && <span>Data Rules Enforced</span>}
         </div>
         {!isCollapsed && (
           <div className="compliance-details">
-            <div>• Sentinel-1: Track #121</div>
-            <div>• OSM Snapshot: 2026-07-27</div>
-            <div>• Zero-Hallucination SITREP</div>
+            <div>• Sentinel-1: Track #121 (Radar)</div>
+            <div>• Sentinel-2: Change through Time</div>
+            <div>• OSM Snapshot: &le; 2026-07-27</div>
+            <div>• Copernicus WorldDEM-30 (&le; 18°)</div>
           </div>
         )}
       </div>

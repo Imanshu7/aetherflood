@@ -1,18 +1,18 @@
 .rubber-segment {
-  --rs-track: #27272a;
-  --rs-thumb: #fafafa;
-  --rs-ink: #fafafa;
-  --rs-ink-active: #18181b;
-  --rs-radius: 10px;
+  --rs-track: rgba(118, 118, 128, 0.12);
+  --rs-thumb: #ffffff;
+  --rs-ink: #636366;
+  --rs-ink-active: #1d1d1f;
+  --rs-radius: 12px;
   --rs-inset: 3px;
-  --rs-thumb-radius: 7px;
+  --rs-thumb-radius: 9px;
   --rs-h: 36px;
   --rs-font: 13px;
   --rs-pad: 14px;
   --rs-min: 44px;
-  --rs-idle: 0.85;
+  --rs-idle: 0.9;
   --rs-hover: 1;
-  --rs-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --rs-ease-out: cubic-bezier(0.25, 0.1, 0.25, 1);
 
   position: relative;
   display: inline-grid;
@@ -22,7 +22,7 @@
   padding: var(--rs-inset);
   border-radius: var(--rs-radius);
   background: var(--rs-track);
-  border: 1.5px solid #CBD5E1;
+  border: 1px solid rgba(0, 0, 0, 0.04);
   font-family: inherit;
   touch-action: pan-y;
   user-select: none;
@@ -37,7 +37,7 @@
 }
 
 .rubber-segment[aria-disabled='true'] {
-  opacity: 0.5;
+  opacity: 0.45;
   pointer-events: none;
 }
 
@@ -62,6 +62,7 @@
   white-space: nowrap;
   cursor: pointer;
   outline: none;
+  letter-spacing: -0.01em;
   transition:
     opacity 160ms ease,
     transform 160ms var(--rs-ease-out);
@@ -69,6 +70,8 @@
 
 .rubber-segment__item[aria-checked='true'] {
   cursor: default;
+  font-weight: 600;
+  color: var(--rs-ink-active);
 }
 
 .rubber-segment[data-draggable] .rubber-segment__item[aria-checked='true'] {
@@ -85,13 +88,14 @@
 }
 
 .rubber-segment__item:focus-visible {
-  outline: 2px solid var(--rs-thumb);
-  outline-offset: 3px;
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .rubber-segment__item[aria-checked='false']:hover {
     opacity: var(--rs-hover);
+    color: #1d1d1f;
   }
 }
 
@@ -103,6 +107,8 @@
   grid-auto-columns: auto;
   background: var(--rs-thumb);
   color: var(--rs-ink-active);
+  border-radius: var(--rs-thumb-radius);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
   pointer-events: none;
 }
 
@@ -114,6 +120,7 @@
   color: inherit;
   opacity: 1;
   cursor: default;
+  font-weight: 600;
 }
 
 @media (prefers-reduced-motion: reduce) {

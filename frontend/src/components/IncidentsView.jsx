@@ -1,74 +1,197 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Mail, 
-  Phone, 
-  MoreHorizontal, 
-  MapPin, 
+  AlertTriangle, 
+  Radio, 
+  Building, 
+  Navigation, 
+  CheckCircle2, 
   Clock, 
-  FileText,
-  AlertTriangle,
-  Radio,
-  Building,
-  Navigation
+  MapPin, 
+  Users, 
+  Send, 
+  ShieldAlert,
+  ShieldCheck,
+  RefreshCw,
+  Search
 } from 'lucide-react';
-import { TELEMETRY_INCIDENTS } from '../data/telemetryIncidents';
 
 export default function IncidentsView() {
   const [activeFilter, setActiveFilter] = useState('All');
-  const [incidents, setIncidents] = useState(TELEMETRY_INCIDENTS);
+  const [incidents, setIncidents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filterOptions = [
     'All',
-    'Flood',
+    'CRITICAL',
     'Landslide',
     'Infrastructure',
-    'Radar',
-    'Sensors',
-    'High'
+    'Flood',
+    'Radar'
   ];
 
+  const fetchIncidents = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/incidents');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setIncidents(data);
+      }
+    } catch (err) {
+      console.warn("Error fetching incidents from database:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/incidents')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setIncidents(data);
-        }
-      })
-      .catch(err => {
-        console.warn("Using verified telemetry incidents baseline:", err);
-      });
+    fetchIncidents();
   }, []);
+
+  const handleUpdateStatus = async (id, newStatus, actionNote) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/incidents/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, action_note: actionNote })
+      });
+      const data = await res.json();
+      if (data.status === 'SUCCESS' && data.incident) {
+        setIncidents(prev => prev.map(inc => inc.id === id ? data.incident : inc));
+      }
+    } catch (e) {
+      alert("Failed to update status in backend database.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const getCategoryIcon = (category) => {
     switch (category) {
-      case 'Radar': return <Radio size={22} color="#245E53" />;
-      case 'Landslide': return <AlertTriangle size={22} color="#BE123C" />;
-      case 'Infrastructure': return <Navigation size={22} color="#BE123C" />;
-      case 'Flood': return <AlertTriangle size={22} color="#0284C7" />;
-      default: return <Building size={22} color="#15803D" />;
+      case 'Radar': return <Radio size={16} color="#0066cc" />;
+      case 'Landslide': return <AlertTriangle size={16} color="#ff3b30" />;
+      case 'Infrastructure': return <Navigation size={16} color="#ff9500" />;
+      case 'Flood': return <AlertTriangle size={16} color="#0066cc" />;
+      default: return <Building size={16} color="#34c759" />;
     }
   };
 
-  const getBadgeColor = (severity) => {
-    switch (severity) {
-      case 'CRITICAL': return { color: '#BE123C', bg: '#FFF1F2', border: '#FECDD3' };
-      case 'URGENT': return { color: '#D97706', bg: '#FEF3C7', border: '#FDE68A' };
-      case 'ACTIVE': return { color: '#FFFFFF', bg: '#163832', border: '#163832' };
-      default: return { color: '#163832', bg: '#F8FAF9', border: '#E2E8F0' };
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'CRITICAL':
+      case 'UNACKNOWLEDGED':
+        return { color: '#ff3b30', bg: 'rgba(255, 59, 48, 0.1)', border: '1px solid rgba(255, 59, 48, 0.25)', label: status };
+      case 'TRIAGED':
+        return { color: '#ff9500', bg: 'rgba(255, 149, 0, 0.1)', border: '1px solid rgba(255, 149, 0, 0.25)', label: 'TRIAGED' };
+      case 'DISPATCHED':
+        return { color: '#0066cc', bg: 'rgba(0, 102, 204, 0.08)', border: '1px solid rgba(0, 102, 204, 0.2)', label: 'TEAM DISPATCHED' };
+      case 'RESOLVED':
+        return { color: '#34c759', bg: 'rgba(52, 199, 89, 0.12)', border: '1px solid rgba(52, 199, 89, 0.25)', label: 'RESOLVED' };
+      default:
+        return { color: '#1d1d1f', bg: '#f5f5f7', border: '1px solid rgba(0, 0, 0, 0.08)', label: status };
     }
   };
 
-  const safeList = Array.isArray(incidents) ? incidents : TELEMETRY_INCIDENTS;
-
-  const filteredIncidents = activeFilter === 'All' 
-    ? safeList 
-    : safeList.filter(item => item.category === activeFilter || (activeFilter === 'High' && (item.severity === 'CRITICAL' || item.severity === 'URGENT')));
+  const filteredIncidents = incidents.filter(item => {
+    const matchesFilter = activeFilter === 'All' 
+      ? true 
+      : (activeFilter === 'CRITICAL' ? item.severity === 'CRITICAL' : item.category === activeFilter);
+    const matchesSearch = searchQuery.trim() === ''
+      ? true
+      : (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         item.id.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      {/* Filter Pills matching Screenshot 3 */}
+      {/* Top Header & Search Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: '14px 20px',
+        borderRadius: '18px',
+        border: '1px solid rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            backgroundColor: '#0066cc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF'
+          }}>
+            <ShieldAlert size={18} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#1d1d1f', letterSpacing: '-0.015em' }}>
+                TACTICAL TRIAGE & INCIDENT DISPATCH CONSOLE
+              </span>
+              <span style={{
+                fontSize: '10px',
+                fontWeight: '600',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                backgroundColor: 'rgba(52, 199, 89, 0.12)',
+                color: '#34c759',
+                border: '1px solid rgba(52, 199, 89, 0.25)'
+              }}>
+                LIVE DATABASE PERSISTED
+              </span>
+            </div>
+            <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>
+              Manage spatial incidents with real-time field triage, evacuation status, and emergency dispatch notes
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: '#f5f5f7',
+            border: '1px solid rgba(0, 0, 0, 0.06)',
+            borderRadius: '9999px',
+            padding: '6px 14px',
+            gap: '8px'
+          }}>
+            <Search size={14} color="#86868b" />
+            <input 
+              type="text" 
+              placeholder="Filter incidents..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px', color: '#1d1d1f' }}
+            />
+          </div>
+
+          <button 
+            onClick={fetchIncidents}
+            className="btn-white-pill"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: '600' }}
+            disabled={isLoading}
+          >
+            <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            <span>Sync</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Row */}
       <div className="filter-pill-row">
         {filterOptions.map((filter) => {
           const isActive = activeFilter === filter;
@@ -78,109 +201,186 @@ export default function IncidentsView() {
               className={`filter-pill ${isActive ? 'active' : ''}`}
               onClick={() => setActiveFilter(filter)}
             >
-              {filter}
+              {filter === 'CRITICAL' ? 'Critical (Landslides & Washouts)' : filter}
             </button>
           );
         })}
       </div>
 
-      {/* 8-Card Grid with real telemetry (No demo stock photos, small typography) */}
+      {/* Incidents Cards Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '14px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '16px'
       }}>
         {filteredIncidents.map((card) => {
-          const badgeStyle = getBadgeColor(card.severity);
-          const isDanger = card.category === 'Landslide' || card.category === 'Infrastructure' || card.severity === 'CRITICAL';
-          const isFlood = card.category === 'Flood';
+          const isDanger = card.severity === 'CRITICAL';
+          const statusStyle = getStatusBadge(card.status);
+          const isUpdating = updatingId === card.id;
+
           return (
             <div 
               key={card.id} 
               className="grey-card" 
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                textAlign: 'center',
-                padding: '16px 14px',
-                minHeight: '270px',
-                justifyContent: 'space-between',
-                border: '1.5px solid var(--card-border)'
-              }}
-            >
-              {/* Top Pill Badge */}
-              <div 
-                className="status-badge" 
-                style={{ 
-                  padding: '4px 14px', 
-                  fontWeight: '700', 
-                  fontSize: '10px',
-                  color: badgeStyle.color,
-                  backgroundColor: badgeStyle.bg,
-                  borderColor: badgeStyle.border || 'transparent'
-                }}
-              >
-                {card.badge}
-              </div>
-
-              {/* GIS / Telemetry Radar Visual */}
-              <div style={{ 
-                width: '64px', 
-                height: '64px', 
-                borderRadius: '6px', 
-                backgroundColor: isDanger ? '#FFF1F2' : (isFlood ? '#F0F9FF' : '#ECFDF5'),
-                margin: '10px 0',
+              style={{
+                padding: '18px',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `1.5px solid ${isDanger ? '#FECDD3' : (isFlood ? '#BAE6FD' : '#A7F3D0')}`
-              }}>
-                {getCategoryIcon(card.category)}
-                <span style={{ fontSize: '8.5px', color: isDanger ? '#BE123C' : (isFlood ? '#0284C7' : '#15803D'), marginTop: '2px', fontWeight: '700' }}>
-                  {card.category.toUpperCase()}
-                </span>
-              </div>
+                justifyContent: 'space-between',
+                borderLeft: isDanger ? '4px solid #ff3b30' : '4px solid #0066cc',
+                backgroundColor: '#FFFFFF'
+              }}
+            >
+              <div>
+                {/* Card Header: Category + ID + Status Badge */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      padding: '5px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f5f5f7',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {getCategoryIcon(card.category)}
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#86868b' }}>
+                      {card.id} · {card.category.toUpperCase()}
+                    </span>
+                  </div>
 
-              {/* Title & Subtitle (Small written text) */}
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px', lineHeight: '1.3' }}>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    color: statusStyle.color,
+                    backgroundColor: statusStyle.bg,
+                    border: statusStyle.border,
+                    padding: '2px 8px',
+                    borderRadius: '9999px'
+                  }}>
+                    {statusStyle.label}
+                  </span>
+                </div>
+
+                {/* Title and Subtitle */}
+                <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: '#1d1d1f', margin: '0 0 5px 0', letterSpacing: '-0.01em' }}>
                   {card.title}
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', lineHeight: '1.35' }}>
+                </h4>
+                <p style={{ fontSize: '11.5px', color: '#86868b', lineHeight: '1.45', margin: '0 0 12px 0' }}>
                   {card.subtitle}
+                </p>
+
+                {/* Spatial Metadata Row */}
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  fontSize: '11px',
+                  color: '#86868b',
+                  backgroundColor: '#f5f5f7',
+                  padding: '9px 12px',
+                  borderRadius: '12px',
+                  marginBottom: '12px',
+                  border: '1px solid rgba(0, 0, 0, 0.04)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <MapPin size={13} color="#0066cc" />
+                    <span>Lat: <strong style={{ color: '#1d1d1f' }}>{card.lat.toFixed(3)}</strong>, Lon: <strong style={{ color: '#1d1d1f' }}>{card.lon.toFixed(3)}</strong></span>
+                  </div>
+
+                  {card.population_affected > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Users size={13} color="#ff3b30" />
+                      <span>Pop: <strong style={{ color: '#ff3b30' }}>{card.population_affected.toLocaleString()} cut off</strong></span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Clock size={13} color="#86868b" />
+                    <span>{card.timestamp}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '9.5px', color: 'var(--text-secondary)', opacity: 0.8, marginTop: '3px' }}>
-                  {card.timestamp}
-                </div>
+
+                {/* Assigned Team & Action Note */}
+                {card.action_taken && (
+                  <div style={{ fontSize: '11px', color: '#1d1d1f', backgroundColor: 'rgba(52, 199, 89, 0.08)', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
+                    <strong style={{ color: '#1b5e20' }}>Action Log:</strong> {card.action_taken}
+                  </div>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '8px', width: '100%', justifyContent: 'center' }}>
-                <button 
-                  className="icon-btn" 
-                  style={{ width: '30px', height: '30px' }}
-                  onClick={() => alert(`Direct Dispatch initiated for ${card.title}`)}
-                  title="Dispatch Team"
+              {/* Triage Action Buttons - Connected directly to Backend Database */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                paddingTop: '12px',
+                marginTop: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => handleUpdateStatus(card.id, 'ACKNOWLEDGED', 'Acknowledged by Sector Command')}
+                  className="filter-pill"
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: card.status === 'ACKNOWLEDGED' ? '#0066cc' : '#f5f5f7',
+                    color: card.status === 'ACKNOWLEDGED' ? '#FFFFFF' : '#1d1d1f',
+                    border: card.status === 'ACKNOWLEDGED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                  }}
+                  disabled={isUpdating}
                 >
-                  <Phone size={13} />
+                  Acknowledge
                 </button>
-                <button 
-                  className="icon-btn" 
-                  style={{ width: '30px', height: '30px' }}
-                  onClick={() => alert(`Location: Lat ${card.lat}, Lon ${card.lon}`)}
-                  title="View Coordinates"
+
+                <button
+                  onClick={() => handleUpdateStatus(card.id, 'TRIAGED', 'Triage priority established; assessment drone en route')}
+                  className="filter-pill"
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: card.status === 'TRIAGED' ? '#ff9500' : '#f5f5f7',
+                    color: card.status === 'TRIAGED' ? '#FFFFFF' : '#1d1d1f',
+                    border: card.status === 'TRIAGED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                  }}
+                  disabled={isUpdating}
                 >
-                  <MapPin size={13} />
+                  Triage
                 </button>
-                <button 
-                  className="icon-btn" 
-                  style={{ width: '30px', height: '30px' }}
-                  onClick={() => alert(`Incident ID: ${card.id} | Severity: ${card.severity}`)}
-                  title="Incident Details"
+
+                <button
+                  onClick={() => handleUpdateStatus(card.id, 'DISPATCHED', 'Rotary-wing / engineering relief unit dispatched')}
+                  className="filter-pill"
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: card.status === 'DISPATCHED' ? '#0066cc' : '#f5f5f7',
+                    color: card.status === 'DISPATCHED' ? '#FFFFFF' : '#1d1d1f',
+                    border: card.status === 'DISPATCHED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                  }}
+                  disabled={isUpdating}
                 >
-                  <FileText size={13} />
+                  Dispatch
+                </button>
+
+                <button
+                  onClick={() => handleUpdateStatus(card.id, 'RESOLVED', 'Bypass opened or situation stabilized')}
+                  className="filter-pill"
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: card.status === 'RESOLVED' ? '#34c759' : '#f5f5f7',
+                    color: card.status === 'RESOLVED' ? '#FFFFFF' : '#1d1d1f',
+                    border: card.status === 'RESOLVED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                  }}
+                  disabled={isUpdating}
+                >
+                  Resolve
                 </button>
               </div>
 
