@@ -44,5 +44,10 @@ class PipelineConfig(BaseModel):
     pre_event_snapshot: str = PRE_EVENT_OSM_SNAPSHOT
     copilot_model: str = os.getenv("COPILOT_MODEL", "gemma:2b")
     ollama_host: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", os.getenv("COPILOT_MODEL", "gemma:2b"))
+    sarvam_api_key: str = os.getenv("SARVAM_API_KEY", "")
+    sarvam_model: str = os.getenv("SARVAM_MODEL", "sarvam-105b")
+    sarvam_api_url: str = os.getenv("SARVAM_API_URL", "https://api.sarvam.ai/v1/chat/completions")
+    copilot_mode: str = os.getenv("COPILOT_MODE", "offline")
 
 config = PipelineConfig()

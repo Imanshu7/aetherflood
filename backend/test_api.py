@@ -2,8 +2,15 @@
 Backend API Comprehensive Integration Test Suite
 Validates all required endpoints, math models, and zero-hallucination outputs.
 """
-import asyncio
 import sys
+import os
+
+# Ensure project root is in sys.path when executed directly
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+import asyncio
 import httpx
 from backend.main import app
 
@@ -52,20 +59,29 @@ async def run_tests():
         assert path_data["threatened_settlements_count"] > 0
         print(f"[PASS] Bonus upstream trace passed! Downstream length: {path_data['total_downstream_length_km']} km, Settlements: {[s['name'] for s in path_data['threatened_settlements']]}")
 
-        print("\nTesting /api/copilot/chat (English Power / Reasoning test) ...")
-        r = await client.post("/api/copilot/chat", json={"query": "Why are you better than other LLMs and what was damaged?", "language": "en"})
+        print("\nTesting /api/copilot/chat (Offline Ollama mode test) ...")
+        r = await client.post("/api/copilot/chat", json={
+            "query": "Why are you better than other LLMs and what was damaged?",
+            "language": "en",
+            "mode": "offline"
+        })
         assert r.status_code == 200
         chat_res = r.json()
         assert "reply" in chat_res
-        print(f"[PASS] English Copilot response received (length: {len(chat_res['reply'])})")
-        print(f"Snippet:\n{chat_res['reply'][:180]}...\n")
+        assert chat_res["mode"] == "offline"
+        print(f"[PASS] Offline Copilot response received (provider: {chat_res['provider']}, length: {len(chat_res['reply'])})")
 
-        print("\nTesting /api/copilot/chat (Nepali Rescuer test) ...")
-        r = await client.post("/api/copilot/chat", json={"query": "कुन कुन बस्तीहरू सम्पर्कविहीन छन् र बाटो अवस्था के छ?", "language": "ne"})
-        assert r.status_code == 200
-        chat_ne = r.json()
-        assert "reply" in chat_ne
-        print(f"[PASS] Nepali Copilot response received (length: {len(chat_ne['reply'])})")
+        print("\nTesting /api/copilot/chat (Online Sarvam AI mode test with grounding fallback) ...")
+        r_online = await client.post("/api/copilot/chat", json={
+            "query": "कुन कुन बस्तीहरू सम्पर्कविहीन छन् र बाटो अवस्था के छ?",
+            "language": "ne",
+            "mode": "online"
+        })
+        assert r_online.status_code == 200
+        chat_online = r_online.json()
+        assert "reply" in chat_online
+        assert chat_online["mode"] == "online"
+        print(f"[PASS] Online Copilot response received (provider: {chat_online['provider']}, length: {len(chat_online['reply'])})")
 
         print("\nTesting /api/copilot/sitrep (Bilingual SITREPs) ...")
         r_en = await client.get("/api/copilot/sitrep?language=en")
@@ -101,7 +117,34 @@ async def run_tests():
         assert r_good.status_code == 200
         print("[PASS] Custom Analysis endpoint succeeded!")
 
-        print("\n================ ALL 8 BACKEND API TESTS PASSED! ================\n")
+        print("\nTesting /api/ml/change-detection (Bi-Temporal Siamese Change Pipeline) ...")
+        # Test mismatched orbit rejection
+        bad_orbit_ml = {
+            "relative_orbit_pre": 121,
+            "relative_orbit_post": 48,
+            "pre_acquisition_time": "2026-08-14T00:18:42",
+            "post_acquisition_time": "2026-08-26T00:18:43"
+        }
+        r_ml_bad = await client.post("/api/ml/change-detection", json=bad_orbit_ml)
+        assert r_ml_bad.status_code == 400
+        print("[PASS] ML Change Detection properly rejected mismatched orbit track (Track 121 vs 48).")
+
+        # Test valid bi-temporal pair with Siamese model execution
+        good_orbit_ml = {
+            "relative_orbit_pre": 121,
+            "relative_orbit_post": 121,
+            "pre_acquisition_time": "2026-08-14T00:18:42",
+            "post_acquisition_time": "2026-08-26T00:18:43",
+            "apply_dem_filter": True
+        }
+        r_ml_good = await client.post("/api/ml/change-detection", json=good_orbit_ml)
+        assert r_ml_good.status_code == 200
+        ml_data = r_ml_good.json()
+        assert ml_data["status"] == "CHANGE_DETECTION_COMPLETE"
+        assert ml_data["segmentation_metrics"]["flood_pixel_count"] > 0
+        print(f"[PASS] Siamese Change Detection succeeded! Flood area: {ml_data['segmentation_metrics']['flood_area_km2']} km²")
+
+        print("\n================ ALL 9 BACKEND API TESTS PASSED! ================\n")
 
 if __name__ == "__main__":
     asyncio.run(run_tests())

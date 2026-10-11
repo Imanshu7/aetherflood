@@ -25,7 +25,105 @@ from backend.config import config
 class CopilotEngine:
     def __init__(self):
         self.ollama_host = config.ollama_host
-        self.model = config.copilot_model
+        self.ollama_model = config.ollama_model
+        self.sarvam_api_key = config.sarvam_api_key
+        self.sarvam_model = config.sarvam_model
+        self.sarvam_api_url = config.sarvam_api_url
+
+    def _clean_emojis(self, text: str) -> str:
+        """Strictly removes emojis, dingbats, and decorative non-text glyphs."""
+        if not text:
+            return ""
+        clean = re.sub(r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]', '', text)
+        clean = re.sub(r'[ \t]+', ' ', clean)
+        return clean.strip()
+
+    def _build_system_prompt(self, telemetry: Dict[str, Any], lang: str) -> str:
+        """Constructs a strict grounding prompt with live spatial facts."""
+        d = telemetry["damage"]
+        n = telemetry["network"]
+        m = telemetry["meta"]
+        lang_instruction = (
+            "LANGUAGE: Nepali (नेपाली). Respond in formal, professional Nepali using official NDRRMA disaster risk reduction terminology."
+            if lang == "ne" else
+            "LANGUAGE: English. Respond in professional, concise UN OCHA / military crisis command English."
+        )
+
+        return (
+            f"You are Aether Rescue Copilot, an operational decision-support AI for the Trishuli Nepal flood disaster (2026-08-26).\n"
+            f"{lang_instruction}\n\n"
+            f"CRITICAL GROUNDING RULES (MANDATORY):\n"
+            f"1. Zero Hallucination: Answer using ONLY the verified spatial telemetry below. Do NOT fabricate numbers, casualty counts, or unverified places.\n"
+            f"2. Strict Zero Emojis: Do NOT output emojis, smiles, or decorative symbols.\n"
+            f"3. Operational Conciseness: Use clear headings and bullet points. Be direct and avoid conversational fluff.\n\n"
+            f"VERIFIED TELEMETRY BASELINE:\n"
+            f"- Incident: {m['event']} ({m['date']}), {m['district']}\n"
+            f"- Spacecraft Sensor: {m['sar_sensor']}\n"
+            f"- Infrastructure Baseline: {m['osm_baseline']}\n"
+            f"- Topographic Mask: {m['dem_dataset']}\n"
+            f"- Flood & Debris Inundation Extent: {d['inundation_area_km2']} km²\n"
+            f"- Damaged Buildings: {d['damaged_buildings_total']} structures ({d['severely_damaged_buildings']} collapsed/debris flow, {d['partially_damaged_buildings']} flooded)\n"
+            f"- Submerged Road Network: {d['submerged_roads_km']} km total (Trunk Highway NH09 Pasang Lhamu: {d['road_breakdown']['trunk_primary']} km)\n"
+            f"- Severed Bridges: {d['severed_bridges_count']} crossings (Ramche Bridge km 61 washed out, Mailung Suspension Bridge severed)\n"
+            f"- Population Isolated: {n['isolated_population']:,} residents across {n['isolated_settlements_count']} settlements ({', '.join(n['isolated_settlements_names'])})\n"
+            f"- Hospital Routing: Trishuli District Hospital (Bidur - 120 beds) is operational but road access from north is severed; Dhunche District Hospital (35 beds) is isolated in-zone.\n"
+            f"- Detour Corridor: Betrawati accessible via Nuwakot rural ridgeline (2.4x detour factor, +42 min delay).\n"
+            f"- Helicopter Landing Zones (LZs, slope < 5 deg): Ramche North [28.070 N, 85.245 E], Syaphrubesi [28.158 N, 85.338 E].\n"
+            f"- Validation Concordance: Copernicus EMS EMSR927 F1 = 98.1%.\n"
+        )
+
+    def _call_ollama(self, query: str, system_prompt: str, model: Optional[str] = None) -> Optional[str]:
+        target_model = model or self.ollama_model or "gemma:2b"
+        url = f"{self.ollama_host}/api/chat"
+        payload = {
+            "model": target_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ],
+            "stream": False,
+            "options": {"temperature": 0.1}
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=8)
+            if resp.status_code == 200:
+                data = resp.json()
+                msg = data.get("message", {}).get("content", "")
+                if msg and len(msg.strip()) > 10:
+                    return self._clean_emojis(msg)
+        except Exception:
+            pass
+        return None
+
+    def _call_sarvam(self, query: str, system_prompt: str, api_key: Optional[str] = None, model: Optional[str] = None) -> Optional[str]:
+        key = api_key or self.sarvam_api_key
+        if not key or key.strip() == "":
+            return None
+        target_model = model or self.sarvam_model or "sarvam-105b"
+        headers = {
+            "api-subscription-key": key.strip(),
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": target_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ],
+            "temperature": 0.2
+        }
+        try:
+            resp = requests.post(self.sarvam_api_url, json=payload, headers=headers, timeout=12)
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    if content and len(content.strip()) > 10:
+                        return self._clean_emojis(content)
+        except Exception:
+            pass
+        return None
 
     def build_grounded_telemetry(self, damage_data: Optional[Dict[str, Any]] = None, network_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -187,9 +285,18 @@ class CopilotEngine:
             "facts": telemetry
         }
 
-    def answer_query(self, query: str, lang: str = "en") -> Dict[str, Any]:
+    def answer_query(
+        self, 
+        query: str, 
+        lang: str = "en", 
+        mode: str = "offline", 
+        sarvam_api_key: Optional[str] = None, 
+        ollama_model: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Answers rescuer queries with mathematical precision and explicit audit proofs.
+        Supports Offline mode (Ollama) and Online mode (Sarvam AI API),
+        with deterministic zero-hallucination grounding fallback.
         """
         telemetry = self.build_grounded_telemetry()
         d = telemetry["damage"]
@@ -198,6 +305,66 @@ class CopilotEngine:
 
         q_lower = query.lower()
         is_nepali = lang == "ne" or bool(re.search(r'[\u0900-\u097F]', query))
+        effective_lang = "ne" if is_nepali else "en"
+
+        system_prompt = self._build_system_prompt(telemetry, effective_lang)
+
+        # 1. Attempt Online Mode via Sarvam AI API
+        if mode == "online":
+            sarvam_reply = self._call_sarvam(
+                query=query, 
+                system_prompt=system_prompt, 
+                api_key=sarvam_api_key, 
+                model=self.sarvam_model
+            )
+            if sarvam_reply:
+                return {
+                    "reply": self._clean_emojis(sarvam_reply),
+                    "audit_proof": "SARVAM_AI_LIVE_GROUNDED",
+                    "provider": "sarvam",
+                    "model": self.sarvam_model or "sarvam-105b",
+                    "grounded_metrics": {
+                        "inundation_area_km2": d["inundation_area_km2"],
+                        "damaged_buildings": d["damaged_buildings_total"],
+                        "isolated_population": n["isolated_population"],
+                        "sensor": m["sar_sensor"]
+                    }
+                }
+
+        # 2. Attempt Offline Mode via local Ollama
+        if mode == "offline":
+            ollama_reply = self._call_ollama(
+                query=query, 
+                system_prompt=system_prompt, 
+                model=ollama_model
+            )
+            if ollama_reply:
+                return {
+                    "reply": self._clean_emojis(ollama_reply),
+                    "audit_proof": "OLLAMA_LOCAL_GROUNDED",
+                    "provider": "ollama",
+                    "model": ollama_model or self.ollama_model or "gemma:2b",
+                    "grounded_metrics": {
+                        "inundation_area_km2": d["inundation_area_km2"],
+                        "damaged_buildings": d["damaged_buildings_total"],
+                        "isolated_population": n["isolated_population"],
+                        "sensor": m["sar_sensor"]
+                    }
+                }
+
+        # 3. Deterministic Grounded Responder (Zero-Hallucination Fallback)
+        provider_name = "sarvam_fallback" if mode == "online" else "ollama_fallback"
+        active_model = (self.sarvam_model if mode == "online" else (ollama_model or self.ollama_model)) or "deterministic_grounded"
+        audit_prefix = "SARVAM_FALLBACK" if mode == "online" else "OLLAMA_FALLBACK"
+
+        def _wrap_result(rep: str, proof_key: str, extra_metrics: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "reply": self._clean_emojis(rep),
+                "audit_proof": f"{audit_prefix}_{proof_key}",
+                "provider": provider_name,
+                "model": active_model,
+                "grounded_metrics": extra_metrics
+            }
 
         # 1. Powers / Comparison with other LLMs question
         if any(w in q_lower for w in ["power", "better", "compare", "dumb", "llm", "chatgpt", "difference", "why you", "competitor"]) or \
@@ -231,16 +398,12 @@ class CopilotEngine:
                     f"5. **Auditable Decision Support:**\n"
                     f"   - Provides tactical LZ coordinates, hospital bed triage, and EMSR927 post-hoc benchmark validation (F1 = 98.1%)."
                 )
-            return {
-                "reply": reply,
-                "audit_proof": "CORE_COMPETENCY_VERIFIED",
-                "grounded_metrics": {
-                    "inundation_area_km2": d["inundation_area_km2"],
-                    "damaged_buildings": d["damaged_buildings_total"],
-                    "isolated_population": n["isolated_population"],
-                    "sensor": m["sar_sensor"]
-                }
-            }
+            return _wrap_result(reply, "CORE_COMPETENCY_VERIFIED", {
+                "inundation_area_km2": d["inundation_area_km2"],
+                "damaged_buildings": d["damaged_buildings_total"],
+                "isolated_population": n["isolated_population"],
+                "sensor": m["sar_sensor"]
+            })
 
         # 2. Cut off / Isolation question ("Who is cut off?")
         if any(w in q_lower for w in ["who is cut off", "cut off", "isolate", "isolated", "disconnect", "severed", "settlement", "trapped", "population"]) or \
@@ -268,15 +431,11 @@ class CopilotEngine:
                     f"4. **Mailung** (Pop: 890) — Riverside track submerged under 2.8m floodwaters; suspension bridge severed.\n\n"
                     f"**Hospital Accessibility:** Trishuli District Hospital (Bidur) is 100% inaccessible by road for all 4 isolated settlements. Betrawati remains accessible via Nuwakot rural ridgeline (2.4x detour factor, +42 min delay)."
                 )
-            return {
-                "reply": reply,
-                "audit_proof": "NX_TOPOLOGY_VERIFIED",
-                "grounded_metrics": {
-                    "isolated_settlements": n["isolated_settlements_names"],
-                    "isolated_population": n["isolated_population"],
-                    "disconnected_subgraphs": n["disconnected_subgraphs"]
-                }
-            }
+            return _wrap_result(reply, "NX_TOPOLOGY_VERIFIED", {
+                "isolated_settlements": n["isolated_settlements_names"],
+                "isolated_population": n["isolated_population"],
+                "disconnected_subgraphs": n["disconnected_subgraphs"]
+            })
 
         # 3. Damage question ("What was damaged?")
         if any(w in q_lower for w in ["what was damaged", "damage", "building", "house", "road", "bridge", "highway", "infrastructure"]) or \
@@ -303,16 +462,12 @@ class CopilotEngine:
                     f"  * Tertiary/rural mountain tracks: **{d['road_breakdown']['tertiary']} km**\n"
                     f"- **Severed Bridges:** **{d['severed_bridges_count']} structures** including Ramche Trishuli Crossing (42m span washed out) and Mailung Suspension Bridge (85m cable snap) [PROOF: OSM-BRIDGE-WASHOUT]."
                 )
-            return {
-                "reply": reply,
-                "audit_proof": "SHAPELY_INTERSECTION_VERIFIED",
-                "grounded_metrics": {
-                    "inundation_area_km2": d["inundation_area_km2"],
-                    "damaged_buildings": d["damaged_buildings_total"],
-                    "submerged_roads_km": d["submerged_roads_km"],
-                    "severed_bridges": d["severed_bridges_count"]
-                }
-            }
+            return _wrap_result(reply, "SHAPELY_INTERSECTION_VERIFIED", {
+                "inundation_area_km2": d["inundation_area_km2"],
+                "damaged_buildings": d["damaged_buildings_total"],
+                "submerged_roads_km": d["submerged_roads_km"],
+                "severed_bridges": d["severed_bridges_count"]
+            })
 
         # 4. Where did the flood hit?
         if any(w in q_lower for w in ["where did", "where hit", "hit", "extent", "radar", "sar", "sentinel-1", "sentinel-2", "orbit", "cloud"]) or \
@@ -335,15 +490,11 @@ class CopilotEngine:
                     f"- **Orbital Geometry Compliance:** Strictly compares pre-flood (2026-08-14) and post-flood (2026-08-26) images acquired along **identical relative orbit track #121**.\n"
                     f"- **Topographic Filtering:** Copernicus WorldDEM-30 slope mask (<= 18°) applied to prevent steep terrain radar shadow and layover artifacts."
                 )
-            return {
-                "reply": reply,
-                "audit_proof": "RADAR_DUAL_POL_VERIFIED",
-                "grounded_metrics": {
-                    "inundation_area_km2": d["inundation_area_km2"],
-                    "orbit_track": 121,
-                    "slope_mask": "<= 18 deg"
-                }
-            }
+            return _wrap_result(reply, "RADAR_DUAL_POL_VERIFIED", {
+                "inundation_area_km2": d["inundation_area_km2"],
+                "orbit_track": 121,
+                "slope_mask": "<= 18 deg"
+            })
 
         # 5. Hospital / Medical Access Question
         if any(w in q_lower for w in ["hospital", "medical", "clinic", "doctor", "ambulance", "patient", "evacuation", "lz", "helicopter"]) or \
@@ -374,15 +525,11 @@ class CopilotEngine:
                     f"   - Syaphrubesi Helipad: [28.158°N, 85.338°E]\n"
                     f"4. **Actionable Directive:** Ground ambulance transport impossible. Rotary-wing air medevac required immediately."
                 )
-            return {
-                "reply": reply,
-                "audit_proof": "HOSPITAL_NETWORK_VERIFIED",
-                "grounded_metrics": {
-                    "trishuli_hospital_status": "OPERATIONAL (No northern road access)",
-                    "dhunche_hospital_status": "ISOLATED_IN_ZONE (35 beds)",
-                    "isolated_population": n["isolated_population"]
-                }
-            }
+            return _wrap_result(reply, "HOSPITAL_NETWORK_VERIFIED", {
+                "trishuli_hospital_status": "OPERATIONAL (No northern road access)",
+                "dhunche_hospital_status": "ISOLATED_IN_ZONE (35 beds)",
+                "isolated_population": n["isolated_population"]
+            })
 
         # 6. Default Tactical Telemetry Response
         if is_nepali:
@@ -407,16 +554,12 @@ class CopilotEngine:
                 f"Ask specific tactical questions regarding 'hospital access', 'who is cut off', 'what was damaged', or request an official SITREP."
             )
 
-        return {
-            "reply": reply,
-            "audit_proof": "TELEMETRY_GROUNDING_CONFIRMED",
-            "grounded_metrics": {
-                "inundation_area_km2": d["inundation_area_km2"],
-                "damaged_buildings": d["damaged_buildings_total"],
-                "submerged_roads_km": d["submerged_roads_km"],
-                "severed_bridges": d["severed_bridges_count"],
-                "isolated_population": n["isolated_population"]
-            }
-        }
+        return _wrap_result(reply, "TELEMETRY_GROUNDING_CONFIRMED", {
+            "inundation_area_km2": d["inundation_area_km2"],
+            "damaged_buildings": d["damaged_buildings_total"],
+            "submerged_roads_km": d["submerged_roads_km"],
+            "severed_bridges": d["severed_bridges_count"],
+            "isolated_population": n["isolated_population"]
+        })
 
 copilot_engine = CopilotEngine()
