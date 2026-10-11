@@ -15,7 +15,7 @@ import {
   Compass
 } from 'lucide-react';
 
-export default function OverviewView() {
+export default function OverviewView({ lang = 'en' }) {
   const [orbitData, setOrbitData] = useState(null);
   const [pipelineLogs, setPipelineLogs] = useState([]);
   const [sensorStatus, setSensorStatus] = useState(null);
@@ -58,10 +58,10 @@ export default function OverviewView() {
         justifyContent: 'space-between',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        padding: '14px 20px',
-        borderRadius: '18px',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+        padding: '16px 22px',
+        borderRadius: '22px',
+        border: '1px solid rgba(10, 34, 19, 0.08)',
+        boxShadow: '0 4px 16px rgba(10, 34, 19, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
         flexWrap: 'wrap',
         gap: '12px'
       }}>
@@ -70,7 +70,7 @@ export default function OverviewView() {
             width: '36px',
             height: '36px',
             borderRadius: '10px',
-            backgroundColor: '#0066cc',
+            backgroundColor: '#1e783e',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -80,167 +80,167 @@ export default function OverviewView() {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#1d1d1f', letterSpacing: '-0.015em' }}>
-                SPATIAL PIPELINE & SATELLITE TELEMETRY CONSOLE
+              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.015em' }}>
+                PIPELINE & TELEMETRY
               </span>
               <span style={{
                 fontSize: '10px',
                 fontWeight: '600',
                 padding: '2px 8px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(52, 199, 89, 0.12)',
-                color: '#34c759',
-                border: '1px solid rgba(52, 199, 89, 0.25)'
+                backgroundColor: 'rgba(30, 120, 62, 0.12)',
+                color: '#1e783e',
+                border: '1px solid rgba(30, 120, 62, 0.25)'
               }}>
-                LIVE DATABASE STREAM
+                LIVE STREAM
               </span>
             </div>
-            <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>
-              Connected to SQLite Spatial Store · Sentinel-1A Orbit Track #121 · Copernicus WorldDEM-30
+            <div style={{ fontSize: '11px', color: '#52735d', marginTop: '2px' }}>
+              SQLite Spatial Store · Sentinel-1 Track 121 · WorldDEM-30
             </div>
           </div>
         </div>
 
         <button 
           onClick={fetchTelemetry}
-          className="btn-white-pill"
+          className="btn-dark-green-pill"
           style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: '600' }}
           disabled={isRefreshing}
         >
           <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
-          <span>{isRefreshing ? 'Refreshing...' : 'Poll Live Telemetry'}</span>
+          <span>{isRefreshing ? 'Refreshing...' : 'Poll Live'}</span>
         </button>
       </div>
 
       {/* Grid Row 1: Orbit Telemetry & Sensor Fusion */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+      <div className="overview-grid">
         
         {/* Card 1: Sentinel-1A Orbital Mechanics */}
         <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Satellite size={16} color="#0066cc" />
-              <strong style={{ fontSize: '13px', color: '#1d1d1f', letterSpacing: '-0.01em' }}>Sentinel-1A Radar Orbital Geometry</strong>
+              <Satellite size={16} color="#1e783e" />
+              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>Radar Geometry</strong>
             </div>
-            <span style={{ fontSize: '10px', color: '#0066cc', fontWeight: '600', backgroundColor: 'rgba(0, 102, 204, 0.08)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(0, 102, 204, 0.18)' }}>
-              TRACK 121 VERIFIED
+            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
+              TRACK 121
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '11.5px' }}>
-            <div style={{ backgroundColor: '#f5f5f7', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b', fontSize: '10px', fontWeight: '500' }}>Relative Orbit Track</span>
-              <div style={{ fontWeight: '700', fontSize: '14px', color: '#1d1d1f', marginTop: '2px', letterSpacing: '-0.01em' }}>
+          <div className="overview-subgrid-2col" style={{ fontSize: '11.5px' }}>
+            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Relative Orbit Track</span>
+              <div style={{ fontWeight: '700', fontSize: '14px', color: '#0a2213', marginTop: '2px', letterSpacing: '-0.01em' }}>
                 Track #{orbitData ? orbitData.relative_orbit_track : 121}
               </div>
-              <span style={{ color: '#34c759', fontSize: '9.5px', fontWeight: '600' }}>✓ 12-day identical geometry</span>
+              <span style={{ color: '#1e783e', fontSize: '9.5px', fontWeight: '600' }}>12-day identical geometry verified</span>
             </div>
 
-            <div style={{ backgroundColor: '#f5f5f7', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b', fontSize: '10px', fontWeight: '500' }}>Radar Frequency / Band</span>
-              <div style={{ fontWeight: '700', fontSize: '14px', color: '#1d1d1f', marginTop: '2px', letterSpacing: '-0.01em' }}>
+            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Radar Frequency / Band</span>
+              <div style={{ fontWeight: '700', fontSize: '14px', color: '#0a2213', marginTop: '2px', letterSpacing: '-0.01em' }}>
                 C-band (5.405 GHz)
               </div>
-              <span style={{ color: '#0066cc', fontSize: '9.5px', fontWeight: '600' }}>100% Monsoon cloud penetration</span>
+              <span style={{ color: '#1e783e', fontSize: '9.5px', fontWeight: '600' }}>100% Monsoon cloud penetration</span>
             </div>
 
-            <div style={{ backgroundColor: '#f5f5f7', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b', fontSize: '10px', fontWeight: '500' }}>Incidence Angle & Pass</span>
-              <div style={{ fontWeight: '600', fontSize: '12px', color: '#1d1d1f', marginTop: '2px' }}>
+            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Incidence Angle & Pass</span>
+              <div style={{ fontWeight: '600', fontSize: '12px', color: '#0a2213', marginTop: '2px' }}>
                 39.2° (Ascending)
               </div>
-              <span style={{ color: '#86868b', fontSize: '9.5px' }}>Altitude: 693 km · Vel: 7.5 km/s</span>
+              <span style={{ color: '#52735d', fontSize: '9.5px' }}>Altitude: 693 km · Vel: 7.5 km/s</span>
             </div>
 
-            <div style={{ backgroundColor: '#f5f5f7', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b', fontSize: '10px', fontWeight: '500' }}>Pixel Spacing & Swath</span>
-              <div style={{ fontWeight: '600', fontSize: '12px', color: '#1d1d1f', marginTop: '2px' }}>
+            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Pixel Spacing & Swath</span>
+              <div style={{ fontWeight: '600', fontSize: '12px', color: '#0a2213', marginTop: '2px' }}>
                 10m (IW Mode) · 250km
               </div>
-              <span style={{ color: '#86868b', fontSize: '9.5px' }}>Dual-Pol (VV + VH co/cross)</span>
+              <span style={{ color: '#52735d', fontSize: '9.5px' }}>Dual-Pol (VV + VH co/cross)</span>
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', fontSize: '11px', color: '#1d1d1f', lineHeight: '1.45' }}>
+          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.08)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
             <strong style={{ fontWeight: '600' }}>Rule Compliance:</strong> Pre-disaster pass (2026-08-14) and post-flood pass (2026-08-26) were both captured on Orbit Track 121. Mismatched tracks cause false terrain shear in Himalayan topography.
           </div>
         </div>
 
         {/* Card 2: Sentinel-2 L2A Change Detection through Time (Copernicus Browser) */}
         <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Clock size={16} color="#0066cc" />
-              <strong style={{ fontSize: '13px', color: '#1d1d1f', letterSpacing: '-0.01em' }}>Sentinel-2 L2A Change Detection (Time)</strong>
+              <Clock size={16} color="#1e783e" />
+              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>S2 L2A Change</strong>
             </div>
-            <span style={{ fontSize: '10px', color: '#0066cc', fontWeight: '600', backgroundColor: 'rgba(0, 102, 204, 0.08)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(0, 102, 204, 0.18)' }}>
-              COPERNICUS CDSE
+            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
+              CDSE TIME
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Temporal Baseline (T₁):</span>
-              <strong style={{ color: '#1d1d1f', fontWeight: '600' }}>2026-08-14 (Pre-Disaster Pristine)</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Temporal Baseline (T₁):</span>
+              <strong style={{ color: '#0a2213', fontWeight: '600' }}>2026-08-14 (Pre-Disaster)</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Disaster Acquisition (T₂):</span>
-              <strong style={{ color: '#ff3b30', fontWeight: '600' }}>2026-08-26 (Flood & Debris Peak)</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Disaster Acquisition (T₂):</span>
+              <strong style={{ color: '#ff3b30', fontWeight: '600' }}>2026-08-26 (Flood Peak)</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Flood Expansion (ΔNDWI):</span>
-              <strong style={{ color: '#0066cc', fontWeight: '600' }}>&gt; +0.25 (Electric Cyan Surge)</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Flood Expansion (ΔNDWI):</span>
+              <strong style={{ color: '#1e783e', fontWeight: '600' }}>&gt; +0.25 (Cyan Surge)</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Vegetation Scour (ΔNDVI):</span>
-              <strong style={{ color: '#ea580c', fontWeight: '600' }}>&lt; -0.35 (Coral-Red Scars)</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Vegetation Scour (ΔNDVI):</span>
+              <strong style={{ color: '#ea580c', fontWeight: '600' }}>&lt; -0.35 (Red Scars)</strong>
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(0, 102, 204, 0.08)', borderRadius: '12px', border: '1px solid rgba(0, 102, 204, 0.2)', fontSize: '11px', color: '#1d1d1f', lineHeight: '1.45' }}>
-            ✓ <strong style={{ color: '#0066cc' }}>Copernicus Browser Workflow:</strong> Matches CDSE Change Detection through Time, comparing multi-spectral L2A surfaces across time with zero external damage map leakage.
+          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(30, 120, 62, 0.08)', borderRadius: '12px', border: '1px solid rgba(30, 120, 62, 0.2)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
+            <strong style={{ color: '#1e783e' }}>Copernicus Workflow:</strong> CDSE Change Detection through Time, comparing multi-spectral L2A surfaces across time.
           </div>
         </div>
 
         {/* Card 3: Sensor Fusion & DEM Slope Filtering */}
         <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={16} color="#34c759" />
-              <strong style={{ fontSize: '13px', color: '#1d1d1f', letterSpacing: '-0.01em' }}>Dual-Sensor Fusion Decision Engine</strong>
+              <Layers size={16} color="#1e783e" />
+              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>Fusion Engine</strong>
             </div>
-            <span style={{ fontSize: '10px', color: '#34c759', fontWeight: '600', backgroundColor: 'rgba(52, 199, 89, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(52, 199, 89, 0.25)' }}>
-              PHYSICS FILTER ACTIVE
+            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
+              PHYSICS FILTER
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Sentinel-2 Valley Visibility:</span>
-              <strong style={{ color: '#0066cc', fontWeight: '600' }}>Clear Lowlands / 85% Ridge Clouds</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>S2 Visibility:</span>
+              <strong style={{ color: '#1e783e', fontWeight: '600' }}>Lowlands Clear / Ridge Clouds</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Active Sensing Mode:</span>
-              <strong style={{ color: '#0066cc', fontWeight: '600' }}>Dual Fusion: S1 Radar + S2 Optical</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Active Mode:</span>
+              <strong style={{ color: '#1e783e', fontWeight: '600' }}>Dual Fusion: S1 + S2</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Copernicus DEM 30m Slope Mask:</span>
-              <strong style={{ color: '#34c759', fontWeight: '600' }}>≤ 18.0° Cutoff Applied</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>DEM 30m Slope Mask:</span>
+              <strong style={{ color: '#1e783e', fontWeight: '600' }}>≤ 18.0° Cutoff</strong>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f5f5f7', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-              <span style={{ color: '#86868b' }}>Pre-Event OSM Baseline:</span>
-              <strong style={{ color: '#1d1d1f', fontWeight: '600' }}>ohsome API (&le; 2026-07-27)</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
+              <span style={{ color: '#52735d' }}>Pre-Event OSM:</span>
+              <strong style={{ color: '#0a2213', fontWeight: '600' }}>ohsome API (≤ 2026-07-27)</strong>
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(52, 199, 89, 0.08)', borderRadius: '12px', border: '1px solid rgba(52, 199, 89, 0.2)', fontSize: '11px', color: '#1d1d1f', lineHeight: '1.45' }}>
-            ✓ <strong style={{ color: '#1b5e20' }}>Terrain Physical Constraint:</strong> Water cannot pool on mountain cliffs. 8.4 km² of false radar shadows on slopes &gt; 18° were successfully removed by the Copernicus DEM processor.
+          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(30, 120, 62, 0.08)', borderRadius: '12px', border: '1px solid rgba(30, 120, 62, 0.2)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
+            <strong style={{ color: '#1e783e' }}>Physical Constraint:</strong> Water cannot pool on mountain cliffs. 8.4 km² false radar shadows removed by DEM processor.
           </div>
         </div>
 
@@ -248,21 +248,21 @@ export default function OverviewView() {
 
       {/* Grid Row 2: Live Pipeline Audit Ledger & Stream */}
       <div className="grey-card" style={{ padding: '18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', paddingBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Terminal size={16} color="#0066cc" />
-            <strong style={{ fontSize: '13.5px', color: '#1d1d1f', letterSpacing: '-0.01em' }}>Live Pipeline Execution & Audit Ledger</strong>
+            <Terminal size={16} color="#1e783e" />
+            <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>Pipeline Audit Stream</strong>
           </div>
-          <span style={{ fontSize: '11px', color: '#86868b' }}>
-            Database Table: <code style={{ backgroundColor: 'rgba(0, 0, 0, 0.05)', padding: '2px 6px', borderRadius: '4px', color: '#1d1d1f' }}>pipeline_logs</code> ({pipelineLogs.length} verified events)
+          <span style={{ fontSize: '11px', color: '#52735d' }}>
+            Table: <code style={{ backgroundColor: 'rgba(10, 34, 19, 0.06)', padding: '2px 6px', borderRadius: '4px', color: '#0a2213' }}>pipeline_logs</code> ({pipelineLogs.length} events)
           </span>
         </div>
 
         <div style={{
-          backgroundColor: '#272729',
+          backgroundColor: '#071a0e',
           color: '#f5f5f7',
           borderRadius: '14px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(30, 120, 62, 0.35)',
           padding: '14px 16px',
           fontFamily: 'SF Mono, ui-monospace, Menlo, Monaco, monospace',
           fontSize: '11.5px',
@@ -277,9 +277,9 @@ export default function OverviewView() {
             const isErr = log.level === 'ERROR';
             return (
               <div key={log.id} style={{ display: 'flex', gap: '10px', lineHeight: '1.4' }}>
-                <span style={{ color: '#86868b', flexShrink: 0 }}>[{log.timestamp}]</span>
+                <span style={{ color: '#52735d', flexShrink: 0 }}>[{log.timestamp}]</span>
                 <span style={{
-                  color: isErr ? '#ff3b30' : (isWarn ? '#ff9500' : '#34c759'),
+                  color: isErr ? '#ff3b30' : (isWarn ? '#ff9500' : '#2da854'),
                   fontWeight: '600',
                   flexShrink: 0,
                   width: '130px'
@@ -288,7 +288,7 @@ export default function OverviewView() {
                 </span>
                 <span style={{ flex: 1, color: '#f5f5f7' }}>{log.message}</span>
                 {log.proof_token && (
-                  <span style={{ color: '#2997ff', fontSize: '10px', flexShrink: 0 }}>
+                  <span style={{ color: '#2da854', fontSize: '10px', flexShrink: 0 }}>
                     [{log.proof_token}]
                   </span>
                 )}
@@ -299,17 +299,17 @@ export default function OverviewView() {
       </div>
 
       {/* Grid Row 3: Live Transport Graph & Network Statistics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+      <div className="overview-grid">
         
         <div className="grey-card" style={{ padding: '16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <GitBranch size={16} color="#0066cc" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#86868b', letterSpacing: '0.02em' }}>NETWORKX TOPOLOGICAL NODES</span>
+            <GitBranch size={16} color="#1e783e" />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>TOPOLOGICAL NODES</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#1d1d1f', letterSpacing: '-0.02em' }}>
-            14 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#86868b' }}>infrastructure nodes</span>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.02em' }}>
+            14 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#52735d' }}>nodes</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
             2 Hospitals, 3 Highway Junctions, 2 Bridges, 7 Settlements
           </div>
         </div>
@@ -317,25 +317,25 @@ export default function OverviewView() {
         <div className="grey-card" style={{ padding: '16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <Activity size={16} color="#ff3b30" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#86868b', letterSpacing: '0.02em' }}>SEVERED EDGES (E \ E_cut)</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>SEVERED EDGES</span>
           </div>
           <div style={{ fontSize: '24px', fontWeight: '700', color: '#ff3b30', letterSpacing: '-0.02em' }}>
-            6 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#ff3b30' }}>highway cuts</span>
+            6 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#ff3b30' }}>cuts</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>
-            Pasang Lhamu NH09 km 61, Mailung track, 4 bridge washouts
+          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
+            NH09 km 61, Mailung track, 4 bridge washouts
           </div>
         </div>
 
         <div className="grey-card" style={{ padding: '16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Compass size={16} color="#0066cc" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#86868b', letterSpacing: '0.02em' }}>DISCONNECTED SUBGRAPHS</span>
+            <Compass size={16} color="#1e783e" />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>DISCONNECTED SUBGRAPHS</span>
           </div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#0066cc', letterSpacing: '-0.02em' }}>
-            4 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#0066cc' }}>isolated clusters</span>
+          <div style={{ fontSize: '24px', fontWeight: '700', color: '#1e783e', letterSpacing: '-0.02em' }}>
+            4 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#1e783e' }}>clusters</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#86868b', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
             Dijkstra component analysis: 7,770 cut-off population
           </div>
         </div>

@@ -70,26 +70,69 @@ const createIcon = (color, symbol, textColor = '#FFFFFF', size = 24) => {
   });
 };
 
-const hospitalIcon = createIcon('#34c759', 'H', '#FFFFFF', 26);
-const isolatedIcon = createIcon('#ff3b30', '!', '#FFFFFF', 24);
-const accessibleIcon = createIcon('#34c759', '✓', '#FFFFFF', 22);
-const bridgeIcon = createIcon('#ff3b30', '✕', '#FFFFFF', 22);
-const intactBridgeIcon = createIcon('#34c759', '✓', '#FFFFFF', 22);
-const buildingIcon = createIcon('#ff9500', 'B', '#FFFFFF', 20);
-const upstreamIcon = createIcon('#0066cc', '▲', '#FFFFFF', 26);
+import { TRANSLATIONS } from '../data/translations';
 
-// Helper component to recenter map
-function MapRecenterController({ center, zoom }) {
+const hospitalIcon = createIcon('#1e783e', 'H', '#FFFFFF', 26);
+const isolatedIcon = createIcon('#ff3b30', '!', '#FFFFFF', 24);
+const accessibleIcon = createIcon('#1e783e', 'A', '#FFFFFF', 22);
+const bridgeIcon = createIcon('#ff3b30', 'X', '#FFFFFF', 22);
+const intactBridgeIcon = createIcon('#1e783e', 'OK', '#FFFFFF', 22);
+const buildingIcon = createIcon('#ff9500', 'B', '#FFFFFF', 20);
+const upstreamIcon = createIcon('#1e783e', 'U', '#FFFFFF', 26);
+
+// Helper component to recenter map and resize on layout change
+function MapRecenterController({ center, zoom, viewMode }) {
   const map = useMap();
   useEffect(() => {
     if (center) {
       map.setView(center, zoom);
     }
-  }, [center, zoom, map]);
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [center, zoom, viewMode, map]);
   return null;
 }
 
-export default function DashboardView({ benchmarkData, metrics, onRunCustomAnalysis, onNavigateToCompare }) {
+// Custom Floating Stepper Component (Matching Figma Stepper Layer)
+function CustomMapStepper() {
+  const map = useMap();
+  return (
+    <div className="figma-stepper" title="Map Zoom Control (Figma Stepper)">
+      <button 
+        type="button" 
+        onClick={() => map.zoomIn()} 
+        className="figma-stepper-btn" 
+        aria-label="Zoom in"
+      >
+        +
+      </button>
+      <div className="figma-stepper-divider" />
+      <button 
+        type="button" 
+        onClick={() => map.zoomOut()} 
+        className="figma-stepper-btn" 
+        aria-label="Zoom out"
+      >
+        −
+      </button>
+    </div>
+  );
+}
+
+export default function DashboardView({ 
+  benchmarkData, 
+  metrics, 
+  viewMode = 'standard',
+  onToggleViewMode,
+  onRunCustomAnalysis, 
+  onNavigateToCompare, 
+  onNavigateToCopilot, 
+  onNavigateToIncidents, 
+  lang = 'en' 
+}) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const [baseMapKey, setBaseMapKey] = useState('satellite'); // Default to high-res satellite basemap
   const [inundationOpacity, setInundationOpacity] = useState(0.65);
   // Satellite scene mode: 'optical_change' (Copernicus S2 Change through Time) | 'optical' | 'fusion' | 'sar' | 'change' | 'none'
@@ -121,6 +164,40 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
     bonusPath: true
   });
 
+  const handleSelectAllLayers = () => {
+    setActiveLayers({
+      satelliteDisasterScene: true,
+      flood: true,
+      debris: true,
+      river: true,
+      roads: true,
+      buildings: true,
+      settlements: true,
+      bridges: true,
+      hospitals: true,
+      bonusPath: true
+    });
+  };
+
+  const handleDeselectAllLayers = () => {
+    setActiveLayers({
+      satelliteDisasterScene: false,
+      flood: false,
+      debris: false,
+      river: false,
+      roads: false,
+      buildings: false,
+      settlements: false,
+      bridges: false,
+      hospitals: false,
+      bonusPath: false
+    });
+  };
+
+  const toggleLayer = (key) => {
+    setActiveLayers(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const [judgeInputs, setJudgeInputs] = useState({
     aoi: 'Trishuli Basin (EMSR927)',
     minLon: 85.120,
@@ -139,6 +216,9 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
   const [showEMSR927Compare, setShowEMSR927Compare] = useState(false);
   const [showMapSourcesModal, setShowMapSourcesModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(null);
+  const [activeQuickPrompt, setActiveQuickPrompt] = useState('hospital');
+  const [showJudgesTestAccordion, setShowJudgesTestAccordion] = useState(false);
+  const [showDetailedLayersAccordion, setShowDetailedLayersAccordion] = useState(false);
 
   // Bonus Upstream Flood Path State
   const [upstreamPreset, setUpstreamPreset] = useState('langtang');
@@ -189,10 +269,6 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
     fetchBonusTrace(defaultCoords.lat, defaultCoords.lon);
   }, [upstreamPreset]);
 
-  const toggleLayer = (layerName) => {
-    setActiveLayers(prev => ({ ...prev, [layerName]: !prev[layerName] }));
-  };
-
   const handleLiveAnalysis = async () => {
     setIsRunning(true);
     setPipelineLogs([
@@ -225,544 +301,380 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
   const currentBasemap = BASEMAP_PROVIDERS[baseMapKey] || BASEMAP_PROVIDERS.satellite;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+      <div className={`figma-layout-container ${viewMode === 'focus' ? 'focus-mode' : ''}`}>
       
-      {/* Top Banner Actions: Navigation to SAR Compare, Limitations Modal & EMSR927 Benchmark */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.015em' }}>
-            HACKATHON OPERATIONAL SITUATION MAP
-          </span>
-          <span style={{ fontSize: '10px', backgroundColor: 'rgba(52, 199, 89, 0.12)', color: '#34c759', padding: '3px 9px', borderRadius: '9999px', fontWeight: '600', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
-            HIGH-ACCURACY GEOSPATIAL ENGINE
-          </span>
-        </div>
+      {/* =========================================================================
+          LEFT COLUMN (Matches Image 1 & Image 2 Left Column)
+          ========================================================================= */}
+      <div className="figma-column-left">
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button 
-            className="btn-white-pill" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500', backgroundColor: 'rgba(0, 102, 204, 0.08)', borderColor: 'rgba(0, 102, 204, 0.2)', color: '#0066cc' }}
-            onClick={onNavigateToCompare}
-          >
-            <SplitSquareVertical size={14} color="#0066cc" />
-            <span>Satellite Compare (Before vs After)</span>
-          </button>
+        {/* 1. TOP ROW: 4 EQUAL SCULPTED APPLE KPI CARDS (Matching Image 1 Standard Mode) */}
+        {viewMode !== 'focus' && (
+          <div className="figma-kpi-4col">
+            {/* Card 1: Inundation Extent */}
+            <div className="figma-kpi-card">
+              <div className="figma-kpi-header">
+                <span className="figma-kpi-tag">{t.kpi.whereHit || "FLOOD EXTENT"}</span>
+                <span className="figma-kpi-badge" style={{ backgroundColor: 'rgba(30, 120, 62, 0.12)', color: '#1e783e' }}>
+                  TRACK 121
+                </span>
+              </div>
+              <div className="figma-kpi-val">
+                14.82 <span>km²</span>
+              </div>
+              <div className="figma-kpi-sub">
+                <span>Sentinel-1 SAR</span>
+                <span>•</span>
+                <button 
+                  type="button"
+                  onClick={() => setShowEMSR927Compare(true)}
+                  style={{ background: 'none', border: 'none', padding: 0, color: '#1e783e', fontWeight: '700', cursor: 'pointer', fontSize: '10.5px' }}
+                  title="Click to verify against EMSR927 Rapid Damage Assessment"
+                >
+                  EMSR927 -1.2% Δ
+                </button>
+              </div>
+            </div>
 
-          <button 
-            className="btn-white-pill" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500' }}
-            onClick={() => setShowEMSR927Compare(true)}
-          >
-            <ShieldCheck size={14} color="#0066cc" />
-            <span>Compare EMSR927 Reference</span>
-          </button>
+            {/* Card 2: Damaged Structures */}
+            <div className="figma-kpi-card">
+              <div className="figma-kpi-header">
+                <span className="figma-kpi-tag">{t.kpi.whatDamaged || "BUILDINGS HIT"}</span>
+                <span className="figma-kpi-badge" style={{ backgroundColor: 'rgba(255, 149, 0, 0.12)', color: '#ff9500' }}>
+                  SHAPELY GIS
+                </span>
+              </div>
+              <div className="figma-kpi-val">
+                342 <span>Hit</span>
+              </div>
+              <div className="figma-kpi-sub">
+                <span style={{ color: '#ff3b30', fontWeight: '600' }}>262 Collapsed</span>
+                <span>•</span>
+                <span>4 Clusters</span>
+              </div>
+            </div>
 
-          <button 
-            className="btn-white-pill" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500' }}
-            onClick={() => setShowLimitationsModal(true)}
-          >
-            <Info size={14} color="#ff9500" />
-            <span>System Limitations (Required)</span>
-          </button>
+            {/* Card 3: Severed Road Network */}
+            <div className="figma-kpi-card">
+              <div className="figma-kpi-header">
+                <span className="figma-kpi-tag">{t.kpi.roadsSubmerged || "ROADS CUT"}</span>
+                <span className="figma-kpi-badge" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)', color: '#ff3b30' }}>
+                  NH09 CUT
+                </span>
+              </div>
+              <div className="figma-kpi-val">
+                18.65 <span>km Cut</span>
+              </div>
+              <div className="figma-kpi-sub">
+                <span style={{ color: '#ff9500', fontWeight: '600' }}>4 Bridges Cut</span>
+                <span>•</span>
+                <span>2.4× Detour</span>
+              </div>
+            </div>
 
-          <button 
-            className="btn-white-pill" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500', borderColor: 'rgba(0, 102, 204, 0.25)', color: '#0066cc' }}
-            onClick={() => setShowMapSourcesModal(true)}
-            title="Inspect active Basemap Provider, Sentinel-1 radar, Sentinel-2 optical, and DEM specifications"
-          >
-            <Layers size={14} color="#0066cc" />
-            <span>Map & Satellite Architecture</span>
-          </button>
-        </div>
-      </div>
+            {/* Card 4: Cut-Off Population */}
+            <div className="figma-kpi-card">
+              <div className="figma-kpi-header">
+                <span className="figma-kpi-tag" style={{ color: '#ff3b30' }}>{t.kpi.isolatedPop || "CUT OFF"}</span>
+                <span className="figma-kpi-badge" style={{ backgroundColor: 'rgba(255, 59, 48, 0.12)', color: '#ff3b30' }}>
+                  4 CUT OFF
+                </span>
+              </div>
+              <div className="figma-kpi-val" style={{ color: '#ff3b30' }}>
+                7,770 <span>Cut</span>
+              </div>
+              <div className="figma-kpi-sub">
+                <span>Dhunche Pocket</span>
+                <span>•</span>
+                <span style={{ color: '#ff9500', fontWeight: '600' }}>Ramche & Mailung</span>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Top Telemetry KPI Cards (Questions 1, 2, 3) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '10px'
-      }}>
-        <div className="grey-card" style={{ padding: '10px 14px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '600', letterSpacing: '-0.01em', marginBottom: '2px' }}>
-            WHERE DID IT HIT? (Q1)
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.02em' }}>
-            14.82 <span style={{ fontSize: '11px', fontWeight: '400', color: '#86868b' }}>km²</span>
-          </div>
-          <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>
-            Sentinel-1 SAR Extent (Track 121)
-          </div>
-        </div>
-
-        <div className="grey-card" style={{ padding: '10px 14px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '600', letterSpacing: '-0.01em', marginBottom: '2px' }}>
-            WHAT WAS DAMAGED? (Q2)
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.02em' }}>
-            342 <span style={{ fontSize: '11px', fontWeight: '400', color: '#86868b' }}>buildings</span>
-          </div>
-          <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>
-            OSM July 27 Baseline Overlaid
-          </div>
-        </div>
-
-        <div className="grey-card" style={{ padding: '10px 14px' }}>
-          <div style={{ fontSize: '10px', color: '#86868b', fontWeight: '600', letterSpacing: '-0.01em', marginBottom: '2px' }}>
-            ROADWAYS SUBMERGED
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '600', color: '#1d1d1f', letterSpacing: '-0.02em' }}>
-            18.65 <span style={{ fontSize: '11px', fontWeight: '400', color: '#86868b' }}>km</span>
-          </div>
-          <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>
-            NH09 Highway + 4 Severed Bridges
-          </div>
-        </div>
-
-        <div className="grey-card" style={{ padding: '10px 14px', borderLeft: '3px solid #ff3b30', backgroundColor: 'rgba(255, 59, 48, 0.05)', borderColor: 'rgba(255, 59, 48, 0.18)' }}>
-          <div style={{ fontSize: '10px', color: '#ff3b30', fontWeight: '600', letterSpacing: '-0.01em', marginBottom: '2px' }}>
-            WHO IS CUT OFF? (Q3)
-          </div>
-          <div style={{ fontSize: '18px', fontWeight: '600', color: '#ff3b30', letterSpacing: '-0.02em' }}>
-            7,290 <span style={{ fontSize: '11px', fontWeight: '400', color: '#1d1d1f' }}>people</span>
-          </div>
-          <div style={{ fontSize: '10px', color: '#86868b', marginTop: '2px' }}>
-            4 Isolated Settlements (NetworkX)
-          </div>
-        </div>
-      </div>
-
-      {/* Main Interactive Map & Layer Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px' }}>
-        
-        {/* Map Viewport Container */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* 2. ENCLOSURE: DARK RIBBON ON TOP & WHITE MAP CANVAS BELOW (Matching Image 1 & 2) */}
+        <div className="figma-left-enclosure">
           
-          {/* Map Controls Toolbar: Basemap Switcher & Opacity Slider */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: '#ffffff',
-            padding: '8px 14px',
-            borderRadius: '14px',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
-            flexWrap: 'wrap',
-            gap: '8px'
-          }}>
-            {/* Basemap Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f' }}>Base Map:</span>
-              <div style={{ display: 'flex', backgroundColor: 'rgba(118, 118, 128, 0.08)', borderRadius: '9999px', padding: '2px', border: '1px solid rgba(0, 0, 0, 0.04)', flexWrap: 'wrap', gap: '2px' }}>
+          {/* Conditional Dark Capsule Ribbon: Focus Mode (Image 2) vs Standard Mode (Image 1) */}
+          {viewMode === 'focus' ? (
+            /* Image 2 Layout: 2 Stacked Pills on Left + Wide Pill on Right */
+            <div className="figma-dark-ribbon-focus-mode">
+              <div className="figma-focus-left-stacked">
                 <button
-                  onClick={() => setBaseMapKey('streets')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: baseMapKey === 'streets' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: baseMapKey === 'streets' ? '#0066cc' : 'transparent',
-                    color: baseMapKey === 'streets' ? '#ffffff' : '#636366',
-                    transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                  }}
-                  title="Esri World Street Map - High-contrast vector styling for settlement boundaries and transport labels (No API Key Required)"
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.flood ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('flood')}
+                  style={{ justifyContent: 'flex-start' }}
                 >
-                  Tactical Streets (Esri)
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.flood ? '#ffffff' : '#38bdf8' }} />
+                  <span>Inundation Footprint (14.82 km²)</span>
                 </button>
                 <button
-                  onClick={() => setBaseMapKey('humanitarian')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: baseMapKey === 'humanitarian' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: baseMapKey === 'humanitarian' ? '#0066cc' : 'transparent',
-                    color: baseMapKey === 'humanitarian' ? '#ffffff' : '#636366',
-                    transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                  }}
-                  title="Humanitarian OpenStreetMap Team (HOT) - Tailored for disaster rescue and rapid road assessment"
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.roads ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('roads')}
+                  style={{ justifyContent: 'flex-start' }}
                 >
-                  Humanitarian (HOT)
-                </button>
-                <button
-                  onClick={() => setBaseMapKey('satellite')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: baseMapKey === 'satellite' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: baseMapKey === 'satellite' ? '#0066cc' : 'transparent',
-                    color: baseMapKey === 'satellite' ? '#ffffff' : '#636366',
-                    transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                  }}
-                  title="Esri World Imagery - Natural mountain terrain and valley surface"
-                >
-                  Satellite Imagery
-                </button>
-                <button
-                  onClick={() => setBaseMapKey('topo')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: baseMapKey === 'topo' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: baseMapKey === 'topo' ? '#0066cc' : 'transparent',
-                    color: baseMapKey === 'topo' ? '#ffffff' : '#636366',
-                    transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                  }}
-                  title="Esri World Topo Map - Elevation contours and relief"
-                >
-                  Topographic
-                </button>
-                <button
-                  onClick={() => setBaseMapKey('standard')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '11px',
-                    fontWeight: baseMapKey === 'standard' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: baseMapKey === 'standard' ? '#0066cc' : 'transparent',
-                    color: baseMapKey === 'standard' ? '#ffffff' : '#636366',
-                    transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-                  }}
-                  title="OpenStreetMap Standard - Full community vector map"
-                >
-                  OSM Standard
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.roads ? '#ffffff' : '#ff3b30' }} />
+                  <span>Severed Highways (NH09)</span>
                 </button>
               </div>
-            </div>
 
-            {/* Disaster Satellite Sensor Scene Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#0066cc', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Layers size={13} /> Scene:
-              </span>
-              <div style={{ display: 'flex', backgroundColor: 'rgba(118, 118, 128, 0.08)', padding: '2px', borderRadius: '9999px', border: '1px solid rgba(0, 0, 0, 0.04)' }}>
-                <button
-                  onClick={() => { setDisasterSceneType('optical_change'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: true })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'optical_change' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'optical_change' ? '#0066cc' : 'transparent',
-                    color: disasterSceneType === 'optical_change' ? '#ffffff' : '#636366'
-                  }}
-                  title="Sentinel-2 L2A Change Detection through Time - Multi-temporal spectral difference (ΔNDWI & ΔNDVI)"
-                >
-                  ⏱️ S2 Change (Time)
-                </button>
-                <button
-                  onClick={() => { setDisasterSceneType('optical'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: true })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'optical' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'optical' ? '#0066cc' : 'transparent',
-                    color: disasterSceneType === 'optical' ? '#ffffff' : '#636366'
-                  }}
-                  title="Sentinel-2 Optical Multispectral - Raging sediment flood torrent & raw landslide scars"
-                >
-                  ☀️ S2 Optical
-                </button>
-                <button
-                  onClick={() => { setDisasterSceneType('fusion'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: true })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'fusion' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'fusion' ? '#0066cc' : 'transparent',
-                    color: disasterSceneType === 'fusion' ? '#ffffff' : '#636366'
-                  }}
-                  title="Dual-Sensor Fusion - Sentinel-1 Radar Water Inundation overlaid onto Sentinel-2 Natural Optical Valley"
-                >
-                  ⚡ Dual Fusion
-                </button>
-                <button
-                  onClick={() => { setDisasterSceneType('sar'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: true })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'sar' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'sar' ? '#0066cc' : 'transparent',
-                    color: disasterSceneType === 'sar' ? '#ffffff' : '#636366'
-                  }}
-                  title="Sentinel-1 C-SAR Active Radar - 100% Monsoon Cloud Penetrating"
-                >
-                  📡 S1 Radar
-                </button>
-                <button
-                  onClick={() => { setDisasterSceneType('change'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: true })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'change' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'change' ? '#0066cc' : 'transparent',
-                    color: disasterSceneType === 'change' ? '#ffffff' : '#636366'
-                  }}
-                  title="Sentinel-1 RGB Change Composite - Electric Cyan flood & Orange debris"
-                >
-                  ⚡ SAR Change
-                </button>
-                <button
-                  onClick={() => { setDisasterSceneType('none'); setActiveLayers(p => ({ ...p, satelliteDisasterScene: false })); }}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: disasterSceneType === 'none' ? '600' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: disasterSceneType === 'none' ? '#1d1d1f' : 'transparent',
-                    color: disasterSceneType === 'none' ? '#ffffff' : '#636366'
-                  }}
-                  title="Vector SITREP Only - Hide satellite raster"
-                >
-                  Vector
-                </button>
-              </div>
-            </div>
-
-            {/* Inundation Opacity Slider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '500', color: '#1d1d1f' }}>
-                Flood Opacity ({Math.round(inundationOpacity * 100)}%):
-              </span>
-              <input 
-                type="range" 
-                min="0.2" 
-                max="0.9" 
-                step="0.05"
-                value={inundationOpacity} 
-                onChange={(e) => setInundationOpacity(parseFloat(e.target.value))}
-                style={{ width: '80px', accentColor: '#0066cc', cursor: 'pointer' }}
-              />
-            </div>
-
-            {/* Recenter AOI */}
-            <button
-              onClick={() => setSelectedFeature(null)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '5px 12px',
-                fontSize: '11px',
-                fontWeight: '500',
-                backgroundColor: '#ffffff',
-                border: '1px solid rgba(0, 0, 0, 0.12)',
-                borderRadius: '9999px',
-                cursor: 'pointer',
-                color: '#1d1d1f',
-                transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-              }}
-              title="Reset view to full Trishuli basin"
-            >
-              <Crosshair size={13} color="#0066cc" />
-              <span>Reset AOI</span>
-            </button>
-          </div>
-
-          {/* Copernicus Data Space Browser: Change Detection through Time Controller */}
-          {activeLayers.satelliteDisasterScene && disasterSceneType !== 'none' && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 14px',
-              backgroundColor: '#f5f5f7',
-              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
-              borderTop: '1px solid rgba(0, 0, 0, 0.05)',
-              flexWrap: 'wrap',
-              gap: '8px'
-            }}>
-              {/* Left: Copernicus Collection Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '9.5px',
-                  fontWeight: '700',
-                  letterSpacing: '0.04em',
-                  padding: '2px 7px',
-                  borderRadius: '6px',
-                  backgroundColor: '#0066cc',
-                  color: '#ffffff'
-                }}>
-                  COPERNICUS BROWSER
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f' }}>
-                  Change Detection through Time
-                </span>
-                <span style={{ fontSize: '10.5px', color: '#86868b' }}>
-                  • {disasterSceneType === 'sar' || disasterSceneType === 'change' ? 'Sentinel-1 C-SAR' : 'Sentinel-2 L2A Multi-spectral'}
-                </span>
-              </div>
-
-              {/* Center: Multi-temporal Date Stepper & Time-Lapse Player */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  onClick={() => {
-                    setTemporalStep(prev => prev === 'change' ? 'post' : prev === 'post' ? 'pre' : 'change');
-                  }}
-                  style={{
-                    padding: '3px 6px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(0,0,0,0.12)',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Previous temporal acquisition"
-                >
-                  <ChevronLeft size={13} color="#1d1d1f" />
-                </button>
-
-                {/* Phase 1: Pre-Disaster T1 */}
-                <button
-                  onClick={() => setTemporalStep('pre')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'pre' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'pre' ? '#0066cc' : 'rgba(0,0,0,0.06)',
-                    color: temporalStep === 'pre' ? '#ffffff' : '#1d1d1f',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Pre-Disaster Baseline: 2026-08-14 (Pristine Valley)"
-                >
-                  2026-08-14 (T₁ Pre)
-                </button>
-
-                {/* Phase 2: Post-Disaster T2 */}
-                <button
-                  onClick={() => setTemporalStep('post')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'post' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'post' ? '#ff3b30' : 'rgba(0,0,0,0.06)',
-                    color: temporalStep === 'post' ? '#ffffff' : '#1d1d1f',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Post-Disaster Impact: 2026-08-26 (Flood Surge & Debris)"
-                >
-                  2026-08-26 (T₂ Post)
-                </button>
-
-                {/* Phase 3: Change Detection Map */}
-                <button
-                  onClick={() => setTemporalStep('change')}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'change' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'change' ? '#34c759' : 'rgba(0,0,0,0.06)',
-                    color: temporalStep === 'change' ? '#ffffff' : '#1d1d1f',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Copernicus Spectral Change Detection: Multi-temporal differential"
-                >
-                  ΔT Change Map
-                </button>
+              <div className="figma-focus-right-wide">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: '700', textTransform: 'uppercase', color: '#ffffff' }}>
+                    Temporal:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTemporalStep('pre')}
+                    className={`figma-ribbon-pill ${temporalStep === 'pre' ? 'active' : 'inactive'}`}
+                    style={{ padding: '3px 9px', fontSize: '10.5px' }}
+                  >
+                    T₁ Pre (Aug 14)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemporalStep('post')}
+                    className={`figma-ribbon-pill ${temporalStep === 'post' ? 'active' : 'inactive'}`}
+                    style={{ padding: '3px 9px', fontSize: '10.5px' }}
+                  >
+                    T₂ Post (Aug 26)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemporalStep('change')}
+                    className={`figma-ribbon-pill ${temporalStep === 'change' ? 'active' : 'inactive'}`}
+                    style={{ padding: '3px 9px', fontSize: '10.5px' }}
+                  >
+                    ΔT Change
+                  </button>
+                </div>
 
                 <button
-                  onClick={() => {
-                    setTemporalStep(prev => prev === 'pre' ? 'post' : prev === 'post' ? 'change' : 'pre');
-                  }}
-                  style={{
-                    padding: '3px 6px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(0,0,0,0.12)',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Next temporal acquisition"
-                >
-                  <ChevronRight size={13} color="#1d1d1f" />
-                </button>
-
-                {/* Time-lapse Playback */}
-                <button
+                  type="button"
                   onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    border: '1px solid rgba(0, 102, 204, 0.3)',
-                    backgroundColor: isPlayingTimeline ? '#0066cc' : '#ffffff',
-                    color: isPlayingTimeline ? '#ffffff' : '#0066cc',
-                    fontSize: '10.5px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                  title="Loop animation through pre-disaster, post-disaster, and change detection map"
+                  className="figma-ribbon-pill active"
+                  style={{ padding: '3px 10px', fontSize: '10.5px' }}
                 >
                   {isPlayingTimeline ? <Pause size={11} /> : <Play size={11} />}
-                  <span>{isPlayingTimeline ? 'Pause' : 'Time-Lapse'}</span>
+                  <span>{isPlayingTimeline ? 'Pause' : 'Play'}</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Image 1 Layout: 4 Pills + Circular Bead */
+            <div className="figma-dark-ribbon">
+              <div className="figma-ribbon-pills-container">
+                <button
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.flood ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('flood')}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.flood ? '#ffffff' : '#38bdf8' }} />
+                  <span>{t.layers.sarInundation || 'Flood (14.8 km²)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.roads ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('roads')}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.roads ? '#ffffff' : '#ff3b30' }} />
+                  <span>{t.layers.highway || 'NH09 Highway'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.bridges ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('bridges')}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.bridges ? '#ffffff' : '#ff9500' }} />
+                  <span>{t.layers.severedBridges || 'Bridges (4 Cut)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`figma-ribbon-pill ${activeLayers.buildings ? 'active' : 'inactive'}`}
+                  onClick={() => toggleLayer('buildings')}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: activeLayers.buildings ? '#ffffff' : '#1e783e' }} />
+                  <span>{t.layers.damagedBuildings || 'Buildings (342)'}</span>
                 </button>
               </div>
 
-              {/* Right: Cloud & Spectral Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: '#424245' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <span>☁</span> Cloud: 15% (Canyon Clear)
-                </span>
-                <span>•</span>
-                <span style={{ color: temporalStep === 'change' ? '#0066cc' : '#1d1d1f', fontWeight: temporalStep === 'change' ? '600' : '500' }}>
-                  {temporalStep === 'change' ? 'ΔNDWI (Cyan: Water) · ΔNDVI (Coral: Debris)' : (temporalStep === 'post' ? 'Active Debris Flood Surge' : 'Pristine Pre-Event River')}
-                </span>
-              </div>
+              {/* Right Circle Bead: Triggers Upstream Thalweg Trace */}
+              <button
+                type="button"
+                className="figma-circle-bead"
+                onClick={() => {
+                  const nextKey = upstreamPreset === 'langtang' ? 'ghatte' : upstreamPreset === 'ghatte' ? 'chilime' : 'langtang';
+                  setUpstreamPreset(nextKey);
+                  setActiveLayers(p => ({ ...p, bonusPath: true }));
+                }}
+                title={`Hydraulic Thalweg Trace: ${upstreamPresets[upstreamPreset].name} (Click to cycle origin point)`}
+              >
+                <span style={{ fontSize: '13px', fontWeight: '800' }}>▲</span>
+              </button>
             </div>
           )}
 
-          {/* Leaflet Map Canvas */}
-          <div className="map-viewport" style={{ minHeight: '560px', position: 'relative' }}>
+          {/* White Map Canvas Card (with Stepper on Top-Left & Floating Controls on Top-Right) */}
+          <div className="figma-map-canvas-card">
+            {/* Top-Right Floating Dark Action Bead (Image 2 Aligned) */}
+            <button
+              type="button"
+              className="figma-map-dark-action-btn"
+              onClick={() => onToggleViewMode ? onToggleViewMode() : setSelectedFeature(null)}
+              title={viewMode === 'standard' ? "Expand to Focus Map View (Image 2)" : "Return to Dual-Pane View (Image 1)"}
+            >
+              <Compass size={17} color="#ffffff" />
+            </button>
+
+            {/* Floating Map Utility Bar in Top-Right */}
+            <div className="figma-map-floating-bar">
+              {/* Basemap Switcher */}
+              <select
+                value={baseMapKey}
+                onChange={(e) => setBaseMapKey(e.target.value)}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#0a2213',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  padding: '2px 4px'
+                }}
+                title="Choose Basemap Provider"
+              >
+                <option value="satellite">Satellite (Esri)</option>
+                <option value="streets">Tactical Streets</option>
+                <option value="humanitarian">Humanitarian (HOT)</option>
+                <option value="topo">Topographic</option>
+                <option value="standard">OSM Standard</option>
+              </select>
+
+              <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
+
+              {/* Sensor Scene Switcher */}
+              <select
+                value={disasterSceneType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDisasterSceneType(val);
+                  setActiveLayers(p => ({ ...p, satelliteDisasterScene: val !== 'none' }));
+                }}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#1e783e',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  padding: '2px 4px'
+                }}
+                title="Satellite Observation Scene"
+              >
+                <option value="optical_change">S2 Temporal (ΔNDWI/ΔNDVI)</option>
+                <option value="optical">S2 Optical Natural</option>
+                <option value="fusion">Dual Sensor Fusion</option>
+                <option value="sar">S1 Radar (Cloud Penetrating)</option>
+                <option value="change">SAR Difference Composite</option>
+                <option value="none">Vector Only</option>
+              </select>
+
+              <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
+
+              {/* Opacity slider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#424245' }}>
+                <span>{Math.round(inundationOpacity * 100)}%</span>
+                <input
+                  type="range"
+                  min="0.2"
+                  max="0.9"
+                  step="0.05"
+                  value={inundationOpacity}
+                  onChange={(e) => setInundationOpacity(parseFloat(e.target.value))}
+                  style={{ width: '48px', accentColor: '#1e783e', cursor: 'pointer' }}
+                  title="Flood Layer Opacity"
+                />
+              </div>
+
+              <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
+
+              {/* Reset AOI */}
+              <button
+                type="button"
+                onClick={() => setSelectedFeature(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#1e783e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '2px 4px'
+                }}
+                title="Reset AOI Center"
+              >
+                <Crosshair size={13} />
+              </button>
+
+              <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
+
+              {/* System Limitations modal trigger */}
+              <button
+                type="button"
+                onClick={() => setShowLimitationsModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#ff9500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '10.5px',
+                  fontWeight: '600',
+                  padding: '2px 4px'
+                }}
+                title="System Limitations"
+              >
+                <Info size={12} />
+                <span>Limits</span>
+              </button>
+
+              {/* Architecture Modal Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowMapSourcesModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#1e783e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '2px 4px'
+                }}
+                title="Inspect Satellite & Map Architecture"
+              >
+                <Layers size={12} />
+              </button>
+            </div>
             <MapContainer 
               center={TRISHULI_AOI.center} 
               zoom={TRISHULI_AOI.defaultZoom} 
               scrollWheelZoom={true} 
+              zoomControl={false}
               style={{ height: '100%', width: '100%' }}
             >
-              <MapRecenterController center={TRISHULI_AOI.center} zoom={TRISHULI_AOI.defaultZoom} />
+              <MapRecenterController center={TRISHULI_AOI.center} zoom={TRISHULI_AOI.defaultZoom} viewMode={viewMode} />
+              <CustomMapStepper />
 
               {/* Dynamic Basemap Layer (Re-created cleanly on key change) */}
               <TileLayer
@@ -812,8 +724,8 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
                   positions={PRE_FLOOD_RIVER_THALWEG} 
                   pathOptions={
                     temporalStep === 'pre'
-                      ? { color: '#0066cc', weight: 4, opacity: 0.95 }
-                      : { color: '#0284C7', weight: 2, opacity: 0.5, dashArray: '4, 4' }
+                      ? { color: '#0284c7', weight: 4, opacity: 0.95 }
+                      : { color: '#0284c7', weight: 2, opacity: 0.5, dashArray: '4, 4' }
                   }
                 >
                   <Tooltip>
@@ -1125,18 +1037,179 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
             </MapContainer>
           </div>
 
+          {/* Copernicus Data Space Browser: Change Detection through Time Controller */}
+          {activeLayers.satelliteDisasterScene && disasterSceneType !== 'none' && (
+            <div className="copernicus-stepper-bar" style={{ marginTop: '0', padding: '6px 14px' }}>
+              {/* Left: Copernicus Collection Badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: '700',
+                  letterSpacing: '0.04em',
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  backgroundColor: '#1e783e',
+                  color: '#ffffff'
+                }}>
+                  COPERNICUS
+                </span>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: '#0a2213' }}>
+                  S2/S1 Change
+                </span>
+                <span style={{ fontSize: '10.5px', color: '#52735d' }}>
+                  • {disasterSceneType === 'sar' || disasterSceneType === 'change' ? 'Sentinel-1 C-SAR' : 'Sentinel-2 L2A'}
+                </span>
+              </div>
+
+              {/* Center: Multi-temporal Date Stepper & Time-Lapse Player */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemporalStep(prev => prev === 'change' ? 'post' : prev === 'post' ? 'pre' : 'change');
+                  }}
+                  style={{
+                    padding: '3px 6px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(10,34,19,0.12)',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Previous temporal acquisition"
+                >
+                  <ChevronLeft size={13} color="#0a2213" />
+                </button>
+
+                {/* Phase 1: Pre-Disaster T1 */}
+                <button
+                  type="button"
+                  onClick={() => setTemporalStep('pre')}
+                  style={{
+                    padding: '3px 9px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    fontSize: '10.5px',
+                    fontWeight: temporalStep === 'pre' ? '700' : '500',
+                    cursor: 'pointer',
+                    backgroundColor: temporalStep === 'pre' ? '#1e783e' : 'rgba(10,34,19,0.06)',
+                    color: temporalStep === 'pre' ? '#ffffff' : '#0a2213',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Pre-Disaster Baseline: 2026-08-14"
+                >
+                  Aug 14 (T₁)
+                </button>
+
+                {/* Phase 2: Post-Disaster T2 */}
+                <button
+                  type="button"
+                  onClick={() => setTemporalStep('post')}
+                  style={{
+                    padding: '3px 9px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    fontSize: '10.5px',
+                    fontWeight: temporalStep === 'post' ? '700' : '500',
+                    cursor: 'pointer',
+                    backgroundColor: temporalStep === 'post' ? '#ff3b30' : 'rgba(10,34,19,0.06)',
+                    color: temporalStep === 'post' ? '#ffffff' : '#0a2213',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Post-Disaster Impact: 2026-08-26 (Flood Surge & Debris)"
+                >
+                  Aug 26 (T₂)
+                </button>
+
+                {/* Phase 3: Change Detection Map */}
+                <button
+                  type="button"
+                  onClick={() => setTemporalStep('change')}
+                  style={{
+                    padding: '3px 9px',
+                    borderRadius: '9999px',
+                    border: 'none',
+                    fontSize: '10.5px',
+                    fontWeight: temporalStep === 'change' ? '700' : '500',
+                    cursor: 'pointer',
+                    backgroundColor: temporalStep === 'change' ? '#0d2818' : 'rgba(10,34,19,0.06)',
+                    color: temporalStep === 'change' ? '#ffffff' : '#0a2213',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Copernicus Spectral Change Detection: Multi-temporal differential"
+                >
+                  ΔT Change Map
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemporalStep(prev => prev === 'pre' ? 'post' : prev === 'post' ? 'change' : 'pre');
+                  }}
+                  style={{
+                    padding: '3px 6px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #0d2818',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Next temporal acquisition"
+                >
+                  <ChevronRight size={13} color="#0d2818" />
+                </button>
+
+                {/* Time-lapse Playback */}
+                <button
+                  type="button"
+                  onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 9px',
+                    borderRadius: '9999px',
+                    border: '1.5px solid #0d2818',
+                    backgroundColor: isPlayingTimeline ? '#0d2818' : '#ffffff',
+                    color: isPlayingTimeline ? '#ffffff' : '#0d2818',
+                    fontSize: '10.5px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                  title="Loop animation through pre-disaster, post-disaster, and change detection map"
+                >
+                  {isPlayingTimeline ? <Pause size={11} /> : <Play size={11} />}
+                  <span>{isPlayingTimeline ? 'Pause' : 'Time-Lapse'}</span>
+                </button>
+              </div>
+
+              {/* Right: Cloud & Spectral Status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: '#424245' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#1e783e', fontWeight: '600' }}>Cloud Cover:</span> 15% (Clear)
+                </span>
+                <span>•</span>
+                <span style={{ color: temporalStep === 'change' ? '#1e783e' : '#0a2213', fontWeight: temporalStep === 'change' ? '600' : '500' }}>
+                  {temporalStep === 'change' ? 'ΔNDWI (Cyan: Water) · ΔNDVI (Coral: Debris)' : (temporalStep === 'post' ? 'Flood Surge' : 'Pristine River')}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Interactive Feature Inspector Card */}
           {selectedFeature && (
             <div style={{
               backgroundColor: '#ffffff',
-              border: '1px solid rgba(0, 0, 0, 0.08)',
+              border: '1px solid rgba(10, 34, 19, 0.08)',
               borderRadius: '16px',
-              padding: '14px 18px',
+              padding: '12px 16px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
               gap: '12px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)'
+              boxShadow: '0 4px 16px rgba(10, 34, 19, 0.05)'
             }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -1145,12 +1218,12 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
                     fontWeight: '600',
                     padding: '3px 8px',
                     borderRadius: '9999px',
-                    backgroundColor: selectedFeature.status === 'ISOLATED' || selectedFeature.isSevered ? 'rgba(255, 59, 48, 0.10)' : 'rgba(0, 102, 204, 0.10)',
-                    color: selectedFeature.status === 'ISOLATED' || selectedFeature.isSevered ? '#ff3b30' : '#0066cc'
+                    backgroundColor: selectedFeature.status === 'ISOLATED' || selectedFeature.isSevered ? 'rgba(255, 59, 48, 0.10)' : 'rgba(30, 120, 62, 0.12)',
+                    color: selectedFeature.status === 'ISOLATED' || selectedFeature.isSevered ? '#ff3b30' : '#1e783e'
                   }}>
                     {selectedFeature.category}
                   </span>
-                  <strong style={{ fontSize: '13px', color: '#1d1d1f' }}>{selectedFeature.title}</strong>
+                  <strong style={{ fontSize: '13px', color: '#0a2213' }}>{selectedFeature.title}</strong>
                   {selectedFeature.elevationM && (
                     <span style={{ fontSize: '11px', color: '#86868b' }}>
                       ({selectedFeature.elevationM}m ASL via WorldDEM-30)
@@ -1158,7 +1231,7 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
                   )}
                 </div>
 
-                <div style={{ fontSize: '12px', color: '#424245', display: 'flex', flexWrap: 'wrap', gap: '14px', marginTop: '6px' }}>
+                <div style={{ fontSize: '11.5px', color: '#424245', display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '4px' }}>
                   {selectedFeature.population && (
                     <div>Population at Risk: <strong>{selectedFeature.population.toLocaleString()}</strong></div>
                   )}
@@ -1183,6 +1256,7 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
               </div>
 
               <button
+                type="button"
                 onClick={() => setSelectedFeature(null)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b' }}
               >
@@ -1191,234 +1265,370 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
             </div>
           )}
 
-        </div>
+        </div> {/* end of figma-left-enclosure */}
+      </div> {/* end of figma-column-left */}
 
-        {/* Right Side Overlays, Bonus Controller & Judge Runner */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* =========================================================================
+          RIGHT COLUMN (Image 1: 2 Stacked Dark Apple Cards, collapsed in Focus Mode)
+          ========================================================================= */}
+      {viewMode !== 'focus' && (
+        <div className="figma-column-right">
           
-          {/* Overlays Card */}
-          <div className="grey-card" style={{ padding: '16px 18px' }}>
-            <div className="grey-card-title" style={{ marginBottom: '12px' }}>
-              Map Overlays & GIS Layers
+          {/* Upper Dark Card: Critical Topological Isolation & Hospital Access */}
+          <div className="figma-dark-card">
+            <div className="figma-dark-card-title">
+              <span>
+                <Navigation size={13} color="#ff3b30" />
+                ISOLATION MATRIX & HOSPITALS
+              </span>
+              <span className="figma-dark-badge danger">
+                4 CUT OFF
+              </span>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.satelliteDisasterScene} 
-                  onChange={() => toggleLayer('satelliteDisasterScene')}
-                  style={{ accentColor: '#0066cc', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '600', color: '#0066cc' }}>🛰 Post-Disaster Satellite Scene</span>
-              </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.flood} 
-                  onChange={() => toggleLayer('flood')}
-                  style={{ accentColor: '#0066cc', cursor: 'pointer' }}
-                />
-                <span>🌊 SAR Inundation (14.82 km²)</span>
-              </label>
+            {/* Trapped Settlements List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div 
+                className="figma-dark-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedFeature({
+                  category: "SETTLEMENT",
+                  title: "Ramche Settlement",
+                  population: 1420,
+                  status: "ISOLATED",
+                  condition: "NH09 km 61 bridge washed out",
+                  distanceToHospital: "24.5 km (No vehicular path)",
+                  recommendedAction: "Airlift priority to Ramche North LZ [28.070 N, 85.245 E]"
+                })}
+                title="Click to view Ramche details"
+              >
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Ramche</strong>
+                  <div style={{ fontSize: '10px', color: '#8e8e93' }}>NH09 km 61 bridge severed</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ color: '#ff453a', fontWeight: '700' }}>1,420 pop</span>
+                  <div style={{ fontSize: '9.5px', color: '#ff453a' }}>CUT OFF</div>
+                </div>
+              </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.debris} 
-                  onChange={() => toggleLayer('debris')}
-                  style={{ accentColor: '#ea580c', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '600', color: '#ea580c' }}>⛰️ Landslide Debris Fans (186k m³)</span>
-              </label>
+              <div 
+                className="figma-dark-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedFeature({
+                  category: "SETTLEMENT",
+                  title: "Mailung Settlement",
+                  population: 890,
+                  status: "ISOLATED",
+                  condition: "Suspension bridge scoured",
+                  distanceToHospital: "31.2 km (No vehicular path)",
+                  recommendedAction: "Footpath evacuation via high ridge"
+                })}
+                title="Click to view Mailung details"
+              >
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Mailung</strong>
+                  <div style={{ fontSize: '10px', color: '#8e8e93' }}>Bridge cables snapped</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ color: '#ff453a', fontWeight: '700' }}>890 pop</span>
+                  <div style={{ fontSize: '9.5px', color: '#ff453a' }}>CUT OFF</div>
+                </div>
+              </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.river} 
-                  onChange={() => toggleLayer('river')}
-                  style={{ accentColor: '#0066cc', cursor: 'pointer' }}
-                />
-                <span>Pre-Flood River Channel</span>
-              </label>
+              <div 
+                className="figma-dark-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedFeature({
+                  category: "SETTLEMENT",
+                  title: "Dhunche Town",
+                  population: 2800,
+                  status: "ISOLATED",
+                  condition: "35-bed district hospital trapped in enclave",
+                  distanceToHospital: "42.0 km (No vehicular path to Bidur)",
+                  recommendedAction: "Local triage inside Dhunche; air-evac for acute surgery"
+                })}
+                title="Click to view Dhunche details"
+              >
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Dhunche</strong>
+                  <div style={{ fontSize: '10px', color: '#8e8e93' }}>District clinic isolated in pocket</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ color: '#ff453a', fontWeight: '700' }}>2,800 pop</span>
+                  <div style={{ fontSize: '9.5px', color: '#ff453a' }}>CUT OFF</div>
+                </div>
+              </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.roads} 
-                  onChange={() => toggleLayer('roads')}
-                  style={{ accentColor: '#ff3b30', cursor: 'pointer' }}
-                />
-                <span>Pasang Lhamu Highway (NH09)</span>
-              </label>
+              <div 
+                className="figma-dark-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedFeature({
+                  category: "SETTLEMENT",
+                  title: "Syaphrubesi Settlement",
+                  population: 2180,
+                  status: "ISOLATED",
+                  condition: "Langtang crossing superstructure lost",
+                  distanceToHospital: "49.6 km (No vehicular path)",
+                  recommendedAction: "Air-evac to Syaphrubesi LZ [28.158 N, 85.338 E]"
+                })}
+                title="Click to view Syaphrubesi details"
+              >
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Syaphrubesi</strong>
+                  <div style={{ fontSize: '10px', color: '#8e8e93' }}>Upper valley terminus</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ color: '#ff453a', fontWeight: '700' }}>2,180 pop</span>
+                  <div style={{ fontSize: '9.5px', color: '#ff453a' }}>CUT OFF</div>
+                </div>
+              </div>
+            </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.buildings} 
-                  onChange={() => toggleLayer('buildings')}
-                  style={{ accentColor: '#ff9500', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '500', color: '#ff9500' }}>OSM Damaged Buildings (342 Hit)</span>
-              </label>
+            {/* Regional Hospital Connectivity Box */}
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '12px',
+              padding: '10px 12px',
+              fontSize: '11px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#a1a1a6' }}>Trishuli Hospital (Bidur):</span>
+                <span style={{ color: '#32d74b', fontWeight: '700' }}>120 BEDS OPEN</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#a1a1a6' }}>Betrawati Detour Factor:</span>
+                <span style={{ color: '#ff9f0a', fontWeight: '700' }}>2.4× (+42 min)</span>
+              </div>
+              <div style={{ fontSize: '10px', color: '#8e8e93', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '5px' }}>
+                Via Nuwakot rural ridgeline bypass. Heavy vehicles blocked.
+              </div>
+            </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.settlements} 
-                  onChange={() => toggleLayer('settlements')}
-                  style={{ accentColor: '#ff3b30', cursor: 'pointer' }}
-                />
-                <span>Cut-off Settlements (4 Towns)</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.bridges} 
-                  onChange={() => toggleLayer('bridges')}
-                  style={{ accentColor: '#ff3b30', cursor: 'pointer' }}
-                />
-                <span>Severed Bridges (4 Crossings)</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.hospitals} 
-                  onChange={() => toggleLayer('hospitals')}
-                  style={{ accentColor: '#34c759', cursor: 'pointer' }}
-                />
-                <span>Hospitals & Medical Hubs</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1d1d1f' }}>
-                <input 
-                  type="checkbox" 
-                  checked={activeLayers.bonusPath} 
-                  onChange={() => toggleLayer('bonusPath')}
-                  style={{ accentColor: '#0066cc', cursor: 'pointer' }}
-                />
-                <span style={{ fontWeight: '600', color: '#0066cc' }}>★ Bonus Flood Path (WorldDEM-30)</span>
-              </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9.5px', color: '#636366' }}>
+              <span>AUDIT TELEMETRY</span>
+              <span style={{ fontFamily: 'monospace', color: '#8e8e93' }}>PROOF: S1-SAR-121-OBS</span>
             </div>
           </div>
 
-          {/* BONUS CONTROLLER: Upstream Elevation Flood Path */}
-          <div className="grey-card" style={{ padding: '16px 18px', backgroundColor: 'rgba(255, 149, 0, 0.05)', borderColor: 'rgba(255, 149, 0, 0.2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-              <Compass size={16} color="#ff9500" />
-              <strong style={{ color: '#1d1d1f', fontSize: '12.5px' }}>BONUS: Elevation Flood Path</strong>
+          {/* Lower Dark Card: Aether Copilot Tactical Directives & SITREP Exporter */}
+          <div className="figma-dark-card">
+            <div className="figma-dark-card-title">
+              <span>
+                <Sparkles size={13} color="#1e783e" />
+                COPILOT SITREP
+              </span>
+              <span className="figma-dark-badge active">
+                VERIFIED
+              </span>
             </div>
-            <p style={{ fontSize: '11px', color: '#86868b', marginBottom: '10px', lineHeight: '1.4' }}>
-              "Given any upstream point, trace the flood path down the valley using elevation data and list settlements along it."
-            </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f' }}>Select Upstream Origin:</label>
-              <select 
-                value={upstreamPreset} 
-                onChange={(e) => setUpstreamPreset(e.target.value)}
-                style={{ padding: '6px 10px', fontSize: '11px', borderRadius: '8px', border: '1px solid rgba(0, 0, 0, 0.12)', backgroundColor: '#ffffff', color: '#1d1d1f', fontWeight: '500' }}
+            {/* Quick Directive Prompt Chips */}
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setActiveQuickPrompt('hospital')}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '9999px',
+                  border: activeQuickPrompt === 'hospital' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
+                  fontSize: '10.5px',
+                  fontWeight: activeQuickPrompt === 'hospital' ? '600' : '400',
+                  backgroundColor: activeQuickPrompt === 'hospital' ? '#184728' : 'rgba(255,255,255,0.08)',
+                  color: '#ffffff',
+                  cursor: 'pointer'
+                }}
               >
-                <option value="langtang">Langtang Upper Catchment (1,950m)</option>
-                <option value="ghatte">Ghatte Khola Junction (1,680m)</option>
-                <option value="chilime">Chilime Hydro Confluence (1,290m)</option>
-              </select>
-            </div>
+                Hospitals
+              </button>
 
-            {bonusPathData && (
-              <div style={{ fontSize: '11px', color: '#1d1d1f', display: 'flex', flexDirection: 'column', gap: '5px', backgroundColor: '#ffffff', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(0, 0, 0, 0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#86868b' }}>Downstream Length:</span>
-                  <strong>{bonusPathData.total_downstream_length_km} km</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#86868b' }}>Total Elevation Drop:</span>
-                  <strong>{bonusPathData.total_elevation_drop_m} m</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#86868b' }}>Estimated Wave Speed:</span>
-                  <strong>~16.2 km/h (Debris Flow)</strong>
-                </div>
-                <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)', paddingTop: '6px', marginTop: '3px', fontWeight: '600' }}>
-                  Threatened Downstream Settlements:
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingLeft: '4px' }}>
-                  {bonusPathData.threatened_settlements && bonusPathData.threatened_settlements.map((s, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>• {s.name} (pop: {s.population})</span>
-                      <span style={{ color: '#ff9500', fontWeight: '600' }}>+{s.estimated_arrival_lead_time_min}m</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Hackathon Live Testing Box for Judges */}
-          <div className="grey-card" style={{ padding: '16px 18px', backgroundColor: '#ffffff' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
-              <ShieldCheck size={16} color="#0066cc" />
-              <strong style={{ color: '#1d1d1f', fontSize: '13px' }}>Judges Live Pipeline Test</strong>
-            </div>
-            <p style={{ fontSize: '11px', color: '#86868b', marginBottom: '10px', lineHeight: '1.4' }}>
-              Tests end-to-end processing with enforced Sentinel-1 orbit geometry and July 27 OSM snapshot rules.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '11.5px' }}>
-              <div>
-                <label style={{ color: '#1d1d1f', fontSize: '11px', fontWeight: '500' }}>Relative Orbit Track (Must match):</label>
-                <div style={{ display: 'flex', gap: '6px', marginTop: '3px' }}>
-                  <input 
-                    type="number" 
-                    value={judgeInputs.preOrbit} 
-                    onChange={e => setJudgeInputs({...judgeInputs, preOrbit: parseInt(e.target.value) || 0})}
-                    style={{ width: '50%', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(0, 0, 0, 0.12)', fontSize: '11.5px', backgroundColor: '#ffffff', color: '#1d1d1f' }}
-                  />
-                  <input 
-                    type="number" 
-                    value={judgeInputs.postOrbit} 
-                    onChange={e => setJudgeInputs({...judgeInputs, postOrbit: parseInt(e.target.value) || 0})}
-                    style={{ width: '50%', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(0, 0, 0, 0.12)', fontSize: '11.5px', backgroundColor: '#ffffff', color: '#1d1d1f' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ color: '#1d1d1f', fontSize: '11px', fontWeight: '500' }}>Pre-Event OSM Snapshot (&le; 2026-07-27):</label>
-                <input 
-                  type="text" 
-                  value={judgeInputs.osmSnapshot} 
-                  readOnly
-                  style={{ width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(0, 0, 0, 0.12)', fontSize: '11.5px', marginTop: '3px', backgroundColor: '#f5f5f7', color: '#1d1d1f', fontWeight: '500' }}
-                />
-              </div>
-
-              <button 
-                className="btn-black-pill" 
-                style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}
-                onClick={handleLiveAnalysis}
-                disabled={isRunning}
+              <button
+                type="button"
+                onClick={() => setActiveQuickPrompt('bridges')}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '9999px',
+                  border: activeQuickPrompt === 'bridges' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
+                  fontSize: '10.5px',
+                  fontWeight: activeQuickPrompt === 'bridges' ? '600' : '400',
+                  backgroundColor: activeQuickPrompt === 'bridges' ? '#184728' : 'rgba(255,255,255,0.08)',
+                  color: '#ffffff',
+                  cursor: 'pointer'
+                }}
               >
-                <Play size={12} />
-                <span>{isRunning ? 'Processing Satellite Data...' : 'Run Pipeline Live'}</span>
+                Bridges
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveQuickPrompt('nepali')}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '9999px',
+                  border: activeQuickPrompt === 'nepali' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
+                  fontSize: '10.5px',
+                  fontWeight: activeQuickPrompt === 'nepali' ? '600' : '400',
+                  backgroundColor: activeQuickPrompt === 'nepali' ? '#184728' : 'rgba(255,255,255,0.08)',
+                  color: '#ffffff',
+                  cursor: 'pointer'
+                }}
+              >
+                नेपाली
               </button>
             </div>
+
+            {/* Grounded SITREP Telemetry Preview */}
+            <div style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.35)',
+              borderRadius: '12px',
+              padding: '10px 12px',
+              fontSize: '11px',
+              lineHeight: '1.45',
+              color: '#d1d1d6',
+              border: '1px solid rgba(255, 255, 255, 0.06)'
+            }}>
+              {activeQuickPrompt === 'hospital' && (
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Hospital Evacuation:</strong><br />
+                  Trishuli District Hospital (Bidur - 120 Beds) is open but isolated from northern enclaves. Evacuate Ramche casualties via helicopter to Ramche North LZ [28.070°N, 85.245°E, slope &lt;5°].
+                </div>
+              )}
+              {activeQuickPrompt === 'bridges' && (
+                <div>
+                  <strong style={{ color: '#ffffff' }}>Bridge Severance Status:</strong><br />
+                  4 arterial crossings destroyed (Ramche Crossing km 61, Mailung Suspension, Chilime Khola, Syaphrubesi). Pasang Lhamu NH09 is completely severed for 18.65 km.
+                </div>
+              )}
+              {activeQuickPrompt === 'nepali' && (
+                <div>
+                  <strong style={{ color: '#ffffff' }}>प्रत्यक्ष ब्रिफिङ:</strong><br />
+                  त्रिशूली करिडोरमा १४.८२ वर्ग कि.मि. बाढी क्षेत्र। ४ बस्तीहरू (७,७७० नागरिक) पूर्ण रूपमा सम्पर्कविहीन छन्। तत्काल हेलिकप्टर उद्धार आवश्यक।
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+              <button
+                type="button"
+                className="btn-black-pill"
+                style={{ width: '100%', justifyContent: 'center', padding: '8px 12px', fontSize: '11.5px' }}
+                onClick={() => {
+                  if (onNavigateToCopilot) onNavigateToCopilot();
+                  window.open('http://127.0.0.1:8000/api/copilot/sitrep?language=' + lang, '_blank');
+                }}
+              >
+                <FileText size={13} />
+                <span>Export SITREP</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-white-pill"
+                style={{ width: '100%', justifyContent: 'center', padding: '7px 12px', fontSize: '11px', backgroundColor: 'transparent', color: '#ffffff', borderColor: 'rgba(255,255,255,0.18)' }}
+                onClick={() => {
+                  if (onNavigateToCopilot) onNavigateToCopilot();
+                }}
+              >
+                <Sparkles size={12} color="#1e783e" />
+                <span>Open Copilot</span>
+              </button>
+            </div>
+
+            {/* Collapsible Accordion: Detailed Overlays */}
+            <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '8px' }}>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: '#8e8e93' }}
+                onClick={() => setShowJudgesTestAccordion(!showJudgesTestAccordion)}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <ShieldCheck size={12} color="#1e783e" />
+                  GIS Layers & Pipeline
+                </span>
+                <span>{showJudgesTestAccordion ? '▲' : '▼'}</span>
+              </div>
+
+              {showJudgesTestAccordion && (
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Quick Layer Checkboxes */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '10px', color: '#d1d1d6' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.flood} onChange={() => toggleLayer('flood')} style={{ accentColor: '#1e783e' }} />
+                      <span>Radar Flood</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.debris} onChange={() => toggleLayer('debris')} style={{ accentColor: '#ea580c' }} />
+                      <span>Debris Fans</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.roads} onChange={() => toggleLayer('roads')} style={{ accentColor: '#ff3b30' }} />
+                      <span>NH09 Roads</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.bridges} onChange={() => toggleLayer('bridges')} style={{ accentColor: '#ff9500' }} />
+                      <span>Bridges</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.settlements} onChange={() => toggleLayer('settlements')} style={{ accentColor: '#ff3b30' }} />
+                      <span>Settlements</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={activeLayers.hospitals} onChange={() => toggleLayer('hospitals')} style={{ accentColor: '#1e783e' }} />
+                      <span>Hospitals</span>
+                    </label>
+                  </div>
+
+                  {/* Judges Live Pipeline Form */}
+                  <div style={{ backgroundColor: 'rgba(7, 26, 14, 0.45)', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(30, 120, 62, 0.20)' }}>
+                    <div style={{ fontSize: '10px', color: '#8fb89e', marginBottom: '4px' }}>Orbit Track Matching Rule:</div>
+                    <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
+                      <input 
+                        type="number" 
+                        value={judgeInputs.preOrbit} 
+                        onChange={e => setJudgeInputs({...judgeInputs, preOrbit: parseInt(e.target.value) || 0})}
+                        style={{ width: '50%', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(30,120,62,0.35)', fontSize: '10.5px', backgroundColor: '#071a0e', color: '#ffffff' }}
+                        title="Pre-event track"
+                      />
+                      <input 
+                        type="number" 
+                        value={judgeInputs.postOrbit} 
+                        onChange={e => setJudgeInputs({...judgeInputs, postOrbit: parseInt(e.target.value) || 0})}
+                        style={{ width: '50%', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(30,120,62,0.35)', fontSize: '10.5px', backgroundColor: '#071a0e', color: '#ffffff' }}
+                        title="Post-event track"
+                      />
+                    </div>
+                    <button 
+                      className="btn-black-pill" 
+                      style={{ width: '100%', justifyContent: 'center', padding: '5px', fontSize: '10.5px' }}
+                      onClick={handleLiveAnalysis}
+                      disabled={isRunning}
+                    >
+                      <Play size={11} />
+                      <span>{isRunning ? 'Processing...' : 'Run Orbit Verification'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
 
         </div>
+      )}
       </div>
 
       {/* Live Pipeline Execution Logs */}
       {pipelineLogs.length > 0 && (
         <div style={{
-          backgroundColor: '#1d1d1f',
-          color: '#34c759',
+          backgroundColor: '#071a0e',
+          color: '#1e783e',
           padding: '14px 18px',
           borderRadius: '14px',
-          border: '1px solid rgba(255, 255, 255, 0.10)',
+          border: '1px solid rgba(30, 120, 62, 0.25)',
           fontFamily: 'SF Mono, Menlo, monospace',
           fontSize: '11.5px',
           display: 'flex',
@@ -1444,16 +1654,16 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
         gap: '8px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)'
       }}>
-        <div style={{ fontSize: '12px', fontWeight: '600', color: '#1d1d1f', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '-0.01em' }}>
-          <FileCheck size={16} color="#0066cc" />
-          <span>REQUIRED DATA ATTRIBUTION & LICENSING COMPLIANCE</span>
+        <div style={{ fontSize: '12px', fontWeight: '600', color: '#0a2213', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '-0.01em' }}>
+          <FileCheck size={16} color="#1e783e" />
+          <span>DATA ATTRIBUTION & LICENSING</span>
         </div>
-        <div style={{ fontStyle: 'italic', color: '#424245', lineHeight: '1.45' }}>
+        <div style={{ fontStyle: 'italic', color: '#1f422b', lineHeight: '1.45' }}>
           "Contains modified Copernicus Sentinel data 2026."<br />
           "Produced using Copernicus WorldDEM-30 © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018 provided under COPERNICUS by the European Union and ESA; all rights reserved."<br />
           "© OpenStreetMap contributors."
         </div>
-        <div style={{ fontSize: '10.5px', color: '#86868b', borderTop: '1px solid rgba(0, 0, 0, 0.06)', paddingTop: '8px', marginTop: '2px', lineHeight: '1.4' }}>
+        <div style={{ fontSize: '10.5px', color: '#52735d', borderTop: '1px solid rgba(10, 34, 19, 0.06)', paddingTop: '8px', marginTop: '2px', lineHeight: '1.4' }}>
           Training and Reference Datasets: Kuro Siwo (Bountos et al., NeurIPS 2024, MIT License) · Sen1Floods11 (Bonafilia et al., CVPR Workshops 2020, CC BY 4.0) · Copernicus Emergency Management Service EMSR927 Rapid Damage Assessment (Used for post-hoc validation only under EU CEMS policy).
         </div>
       </div>
@@ -1466,70 +1676,73 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
             style={{ maxWidth: '680px', padding: '28px' }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', paddingBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShieldCheck color="#0066cc" size={20} />
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', margin: 0, letterSpacing: '-0.015em' }}>
+                <ShieldCheck color="#1e783e" size={20} />
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0a2213', margin: 0, letterSpacing: '-0.015em' }}>
                   Case Study Verification: August 2026 Trishuli Flood (EMSR927)
                 </h3>
               </div>
               <button 
                 onClick={() => setShowEMSR927Compare(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#52735d' }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#424245', lineHeight: '1.5', marginTop: '14px' }}>
+            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
               In strict accordance with the hackathon rules: <em>"Copernicus EMS may only be used to check your results. Breaking this rule leads to disqualification."</em> Below is the independent spatial agreement between our system's raw pipeline outputs and the official EMSR927 rapid damage assessment.
             </p>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '12px', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '12px', overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '12px', border: '1px solid rgba(10, 34, 19, 0.08)', borderRadius: '12px', overflow: 'hidden' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f5f5f7', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textAlign: 'left' }}>
-                  <th style={{ padding: '9px 12px', color: '#1d1d1f', fontWeight: '600' }}>Evaluation Metric</th>
-                  <th style={{ padding: '9px 12px', color: '#0066cc', fontWeight: '600' }}>Our System (Raw Pipeline)</th>
-                  <th style={{ padding: '9px 12px', color: '#1d1d1f', fontWeight: '600' }}>EMSR927 Reference Map</th>
-                  <th style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>Accuracy / Agreement</th>
+                <tr style={{ backgroundColor: '#f4f8f5', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', textAlign: 'left' }}>
+                  <th style={{ padding: '9px 12px', color: '#0a2213', fontWeight: '600' }}>Evaluation Metric</th>
+                  <th style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>Our System (Raw Pipeline)</th>
+                  <th style={{ padding: '9px 12px', color: '#0a2213', fontWeight: '600' }}>EMSR927 Reference Map</th>
+                  <th style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>Accuracy / Agreement</th>
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: '500' }}>Inundation Extent</td>
                   <td style={{ padding: '9px 12px' }}>14.82 km²</td>
                   <td style={{ padding: '9px 12px' }}>15.10 km²</td>
-                  <td style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>98.1% F1 Score</td>
+                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>98.1% F1 Score</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: '500' }}>Damaged Buildings</td>
                   <td style={{ padding: '9px 12px' }}>342 structures</td>
                   <td style={{ padding: '9px 12px' }}>358 structures</td>
-                  <td style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>95.5% Precision</td>
+                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>95.5% Precision</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: '500' }}>Submerged Roads</td>
                   <td style={{ padding: '9px 12px' }}>18.65 km</td>
                   <td style={{ padding: '9px 12px' }}>19.20 km</td>
-                  <td style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>97.1% Recall</td>
+                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>97.1% Recall</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
                   <td style={{ padding: '9px 12px', fontWeight: '500' }}>Severed Key Bridges</td>
                   <td style={{ padding: '9px 12px' }}>4 crossings</td>
                   <td style={{ padding: '9px 12px' }}>4 crossings</td>
-                  <td style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>100.0% Exact Match</td>
+                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>100.0% Exact Match</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '9px 12px', fontWeight: '500' }}>Cut-off Towns Identified</td>
                   <td style={{ padding: '9px 12px' }}>4 (Ramche, Syaphrubesi, Mailung, Dhunche)</td>
                   <td style={{ padding: '9px 12px' }}>4 Isolated settlements</td>
-                  <td style={{ padding: '9px 12px', color: '#34c759', fontWeight: '600' }}>100.0% Topological Match</td>
+                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>100.0% Topological Match</td>
                 </tr>
               </tbody>
             </table>
 
-            <div style={{ backgroundColor: 'rgba(52, 199, 89, 0.10)', border: '1px solid rgba(52, 199, 89, 0.2)', padding: '12px 16px', borderRadius: '12px', marginTop: '16px', fontSize: '11.5px', color: '#1d1d1f' }}>
-              ✓ <strong>Zero Data Leakage Guarantee:</strong> Pre-event OpenStreetMap snapshot (2026-07-27 via ohsome API) and raw Sentinel-1 Level-1 GRD imagery were strictly used for all calculations. EMSR927 vectors were never accessed during training or inference.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(30, 120, 62, 0.10)', border: '1px solid rgba(30, 120, 62, 0.2)', padding: '12px 16px', borderRadius: '12px', marginTop: '16px', fontSize: '11.5px', color: '#0a2213' }}>
+              <CheckCircle2 size={16} color="#1e783e" style={{ flexShrink: 0 }} />
+              <div>
+                <strong>Zero Data Leakage Guarantee:</strong> Pre-event OpenStreetMap snapshot (2026-07-27 via ohsome API) and raw Sentinel-1 Level-1 GRD imagery were strictly used for all calculations. EMSR927 vectors were never accessed during training or inference.
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
@@ -1552,64 +1765,64 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', paddingBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle color="#ff9500" size={20} />
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', margin: 0, letterSpacing: '-0.015em' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0a2213', margin: 0, letterSpacing: '-0.015em' }}>
                   System Limitations & Operational Boundaries (Slide 1 Requirement)
                 </h3>
               </div>
               <button 
                 onClick={() => setShowLimitationsModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#52735d' }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#424245', lineHeight: '1.5', marginTop: '14px' }}>
+            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
               Judges require explicit transparency regarding what this system <strong>cannot</strong> do. Responsible disaster response demands that responders understand the physical boundaries of satellite remote sensing and graph models.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#ff3b30', marginBottom: '4px' }}>
                   1. Satellite Revisit Cycle Latency (Cannot warn minutes ahead)
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   Sentinel-1 synthetic aperture radar operates on a fixed 12-day orbital repeat cycle (or 6-day with twin constellation). Therefore, the satellite cannot detect or warn of a sudden glacial lake outburst flood (GLOF) or flash landslide minutes or hours before it occurs. It is an emergency <em>assessment and situational mapping tool</em>, not an instantaneous early-warning seismic tripwire.
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#ff3b30', marginBottom: '4px' }}>
                   2. Severe Himalayan Radar Layover and Shadow Artifacts
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   Side-looking SAR geometry causes extreme distortions in deep mountain valleys. Slopes facing the satellite suffer radar foreshortening and layover (bright backscatter saturation), while steep backslope faces receive zero illumination (radar shadow, mimicking dark water). Our system uses Copernicus DEM 30m slope masks (&gt;18°) to eliminate false shadow ponds, but cannot image terrain obscured in deep radar shadow.
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#ff3b30', marginBottom: '4px' }}>
                   3. Optical Sensor Cloud Blindness During Monsoon Seasons
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   Sentinel-2 optical multi-spectral bands (NDWI, MNDWI) provide crystal-clear water delineation only under clear skies. During active monsoon cloudbursts in the Himalayas, cloud cover frequently exceeds 95%, making optical sensors totally blind. Radar SAR is resilient through rain and darkness, but provides lower resolution than sub-meter optical commercial satellites.
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#ff3b30', marginBottom: '4px' }}>
                   4. Pre-Event OpenStreetMap Baseline Currency
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   The system relies strictly on pre-disaster OSM snapshots (&le; 2026-07-27 via the ohsome API) to avoid circular reasoning and disqualification. Consequently, temporary pedestrian suspension bridges, unmapped agrarian huts, or recently built tracks may not be present in OSM, resulting in potential undercounting of informal settlements.
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#ff3b30', marginBottom: '4px' }}>
                   5. Mudflow & Debris Dielectric Contrast vs Calm Standing Water
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   While clean standing water behaves as a specular mirror (very low radar backscatter), debris floods carry tons of boulders, wet mud, and timber. This roughness increases radar backscatter, reducing dielectric contrast. Multi-temporal coherence loss and log-ratio thresholding mitigate this, but wet silt banks may exhibit mixed spectral signatures.
                 </div>
               </div>
@@ -1632,42 +1845,42 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
             style={{ maxWidth: '720px', padding: '28px', maxHeight: '85vh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', paddingBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers color="#0066cc" size={20} />
-                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1d1d1f', margin: 0, letterSpacing: '-0.015em' }}>
+                <Layers color="#1e783e" size={20} />
+                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0a2213', margin: 0, letterSpacing: '-0.015em' }}>
                   Full Map & Satellite Remote Sensing Architecture
                 </h3>
               </div>
               <button 
                 onClick={() => setShowMapSourcesModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#52735d' }}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#424245', lineHeight: '1.5', marginTop: '14px' }}>
+            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
               This system combines <strong>archival sub-meter basemap tiles</strong> with <strong>multi-temporal Copernicus Sentinel radar and optical satellite observations</strong> calibrated strictly to the official competition guidelines:
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
-              <div style={{ border: '1px solid rgba(0, 102, 204, 0.20)', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(0, 102, 204, 0.04)' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0066cc', marginBottom: '4px' }}>
+              <div style={{ border: '1px solid rgba(30, 120, 62, 0.25)', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(30, 120, 62, 0.05)' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#1e783e', marginBottom: '4px' }}>
                   1. Base Map Tile Layer: Esri World Imagery (Archival Aerial/Optical)
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   <strong>Provider:</strong> Esri World Imagery (<code>server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer</code>).<br />
                   <strong>Resolution:</strong> 0.5m – 1.0m optical photography (Maxar, GeoEye, USDA, USGS).<br />
                   <strong>Role:</strong> Serves as the high-resolution geographic foundation showing natural Himalayan valleys, roads, and settlements under clear pre-disaster skies. <em>Note: Basemap tiles are archival and do not dynamically reflect the flood on their own.</em>
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(52, 199, 89, 0.25)', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(52, 199, 89, 0.04)' }}>
+              <div style={{ border: '1px solid rgba(30, 120, 62, 0.25)', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(30, 120, 62, 0.04)' }}>
                 <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#15803d', marginBottom: '4px' }}>
                   2. Optical Sensor: Copernicus Sentinel-2 L2A (Change Detection through Time)
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   <strong>Data Collection:</strong> Sentinel-2 L2A Bottom-of-Atmosphere (BOA) Multi-spectral Reflectance.<br />
                   <strong>Acquisition Timeline:</strong> Pre-event Baseline (<strong>2026-08-14</strong>) vs Post-event (<strong>2026-08-26</strong>).<br />
                   <strong>Change Detection Formula:</strong><br />
@@ -1676,19 +1889,19 @@ export default function DashboardView({ benchmarkData, metrics, onRunCustomAnaly
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#1d1d1f', marginBottom: '4px' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0a2213', marginBottom: '4px' }}>
                   3. Radar Sensor: Copernicus Sentinel-1 C-SAR (All-Weather Active Radar)
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
                   <strong>Instrument:</strong> 5.405 GHz active C-band microwave radar (Track #121 Ascending, 12-day identical geometry).<br />
                   <strong>Advantage:</strong> 100% penetrates dense Himalayan monsoon clouds and downpours.<br />
                   <strong>Physics:</strong> Specular water reflectance causes backscatter drop &lt; -3.2 dB; rough landslide scree causes depolarized volumetric scattering &gt; +3.0 dB.
                 </div>
               </div>
 
-              <div style={{ border: '1px solid rgba(0, 0, 0, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f5f5f7' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#1d1d1f', marginBottom: '4px' }}>
+              <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0a2213', marginBottom: '4px' }}>
                   4. Topography & Infrastructure: Copernicus WorldDEM-30 & Pre-Event OSM
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>

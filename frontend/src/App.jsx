@@ -8,27 +8,38 @@ import SituationStatsView from './components/SituationStatsView';
 import AuthModal from './components/AuthModal';
 import RubberSegment from './components/RubberSegment';
 import { 
-  Map, 
-  Layers, 
-  Activity, 
-  MessageSquare, 
-  BarChart2, 
   Radio, 
   Search, 
-  User, 
-  LogOut, 
-  Bell, 
-  Mail,
-  SplitSquareVertical
+  Mic,
+  LogOut 
 } from 'lucide-react';
+
+import { TRANSLATIONS } from './data/translations';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [benchmarkData, setBenchmarkData] = useState(null);
   const [metrics, setMetrics] = useState(null);
+  const [viewMode, setViewMode] = useState('standard'); // 'standard' (Image 1) | 'focus' (Image 2)
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem('aetherflood_lang') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
 
-  // Real logged-in user profile from localStorage (Zero demo accounts)
+  const handleLanguageChange = (newLang) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem('aetherflood_lang', newLang);
+    } catch (e) {
+      console.warn("Storage save:", e);
+    }
+  };
+
+  // Real logged-in user profile from localStorage
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('aetherflood_user');
@@ -82,51 +93,52 @@ export default function App() {
       });
   }, []);
 
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
+  // Authentic Apple Tab Bar items (Matches Tab 1 ... Tab 5 in Image 1 & Image 2)
   const navSegments = [
-    { value: 'dashboard', label: 'Dashboard', icon: <Map size={13} /> },
-    { value: 'compare', label: 'SAR Compare', icon: <SplitSquareVertical size={13} /> },
-    { value: 'overview', label: 'Overview', icon: <Layers size={13} /> },
-    { value: 'incidents', label: 'Incidents', icon: <Activity size={13} /> },
-    { value: 'copilot', label: 'Copilot', icon: <MessageSquare size={13} /> },
-    { value: 'stats', label: 'Stats', icon: <BarChart2 size={13} /> }
+    { value: 'dashboard', label: 'Dashboard', title: `Dashboard: ${t.nav.dashboard}` },
+    { value: 'compare', label: 'Compare', title: `Compare: ${t.nav.compare}` },
+    { value: 'overview', label: 'Overview', title: `Overview: ${t.nav.overview}` },
+    { value: 'incidents', label: 'Incidents', title: `Incidents: ${t.nav.incidents}` },
+    { value: 'copilot', label: 'Copilot', title: `Copilot: ${t.nav.copilot}` }
   ];
 
   return (
     <div className="app-container">
-      {/* Main Viewport - Full Width without Sidebar */}
       <div className="main-viewport">
-        {/* Top App Bar with Shifted Navigation powered by RubberSegment */}
+        {/* Apple Sub-Nav Frosted Glass Top Bar */}
         <header className="top-bar">
           {/* Left: Brand Identity Beacon */}
           <div className="top-bar-left">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <Radio size={16} color="#34c759" className="live-pulse-icon" />
+              <Radio size={16} color="#1e783e" className="live-pulse-icon" />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: '600', letterSpacing: '-0.02em', color: '#1d1d1f', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '12.5px', fontWeight: '700', letterSpacing: '-0.02em', color: '#0a2213', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
                   AETHERFLOOD
                 </div>
-                <div style={{ fontSize: '9px', fontWeight: '500', color: '#0066cc', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '8.5px', fontWeight: '600', color: '#1e783e', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                   COPILOT // LIVE
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Center: Shifted Navigation powered by RubberSegment from React Bits */}
+          {/* Center: Apple Frosted Segmented Tab Control (Tab 1 ... Tab 5) */}
           <div className="top-bar-center">
             <RubberSegment
               items={navSegments}
               value={currentView}
               onChange={(val) => setCurrentView(val)}
-              trackColor="rgba(118, 118, 128, 0.12)"
+              trackColor="rgba(255, 255, 255, 0.65)"
               thumbColor="#ffffff"
-              textColor="#636366"
-              activeTextColor="#1d1d1f"
+              textColor="#1f422b"
+              activeTextColor="#0a2213"
               size="md"
-              radius={12}
+              radius={9999}
               inset={3}
               equalSlots={false}
-              stretch={50}
+              stretch={40}
               squash={2}
               speed={1}
               glide={60}
@@ -134,111 +146,156 @@ export default function App() {
             />
           </div>
 
-          {/* Right: Search Box, Alert Actions, Operator Account Profile */}
+          {/* Right: Search Box, Dark Pill Action, Language, Account Profile */}
           <div className="top-bar-right">
+            {/* Apple Search Pill (with SF Search icon, Search input & Mic icon) */}
             <div className="top-bar-search">
-              <Search size={13} color="#86868b" />
+              <Search size={13} color="#8e8e93" />
               <input 
                 type="text" 
-                placeholder="Search incidents, telemetry..." 
+                placeholder="Search..." 
               />
+              <Mic size={13} color="#8e8e93" style={{ cursor: 'pointer', flexShrink: 0 }} title="Voice dictation input" />
             </div>
 
-            <div className="top-bar-actions">
-              <button className="icon-btn" title="Alerts & Warnings">
-                <Bell size={14} />
-              </button>
-              <button className="icon-btn" title="Dispatch Messages">
-                <Mail size={14} />
-              </button>
-            </div>
-
-            {/* Operator Account Profile */}
-            <div 
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: 'rgba(118, 118, 128, 0.08)',
-                border: '1px solid rgba(0, 0, 0, 0.08)',
-                padding: '4px 12px 4px 6px',
-                borderRadius: '9999px',
-                cursor: 'pointer',
-                transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)'
-              }}
-              onClick={() => setIsAuthModalOpen(true)}
-              title="Click to switch account"
-            >
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '9999px',
-                backgroundColor: '#0066cc',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '10px',
-                fontWeight: '600'
-              }}>
-                {currentUser ? currentUser.initials : 'RO'}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: '#1d1d1f', lineHeight: '1.2' }}>
-                  {currentUser ? currentUser.name : 'Sign In'}
-                </span>
-                <span style={{ fontSize: '9px', color: '#86868b', lineHeight: '1.1' }}>
-                  {currentUser ? currentUser.role : 'Observer'}
-                </span>
-              </div>
-              {currentUser && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleLogout();
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#86868b',
-                    cursor: 'pointer',
-                    padding: '2px',
+                  {/* Global Language Switcher */}
+                  <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    marginLeft: '2px'
-                  }}
-                  title="Sign Out"
-                >
-                  <LogOut size={12} />
-                </button>
-              )}
+                    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+                    borderRadius: '9999px',
+                    padding: '2px',
+                    border: '1px solid rgba(255, 255, 255, 0.7)'
+                  }}>
+                    <button
+                      onClick={() => handleLanguageChange('en')}
+                      style={{
+                        padding: '2.5px 7.5px',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        fontSize: '10.5px',
+                        fontWeight: lang === 'en' ? '600' : '500',
+                        cursor: 'pointer',
+                        backgroundColor: lang === 'en' ? '#0d2818' : 'transparent',
+                        color: lang === 'en' ? '#ffffff' : '#636366',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      EN
+                    </button>
+                    <button
+                      onClick={() => handleLanguageChange('ne')}
+                      style={{
+                        padding: '2.5px 7.5px',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        fontSize: '10.5px',
+                        fontWeight: lang === 'ne' ? '600' : '500',
+                        cursor: 'pointer',
+                        backgroundColor: lang === 'ne' ? '#0d2818' : 'transparent',
+                        color: lang === 'ne' ? '#ffffff' : '#636366',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      NE
+                    </button>
+                  </div>
+
+                  {/* Operator Account Profile */}
+                  <div 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.55)',
+                      border: '1px solid rgba(255, 255, 255, 0.7)',
+                      padding: '2px 7px 2px 3px',
+                      borderRadius: '9999px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0
+                    }}
+                    onClick={() => setIsAuthModalOpen(true)}
+                    title="Click to switch account"
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#0d2818',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '9.5px',
+                      fontWeight: '600',
+                      flexShrink: 0
+                    }}>
+                      {currentUser ? currentUser.initials : 'RO'}
+                    </div>
+                    <span className="user-pill-name" style={{ 
+                      fontSize: '10.5px', 
+                      fontWeight: '600', 
+                      color: '#0a2213', 
+                      whiteSpace: 'nowrap',
+                      maxWidth: '75px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {currentUser ? (currentUser.name.replace(/^Commander\s+/i, '').split(' ')[0]) : t.account.signIn}
+                    </span>
+                    {currentUser && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLogout();
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#86868b',
+                          cursor: 'pointer',
+                          padding: '1px',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title={t.account.signOut}
+                      >
+                        <LogOut size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </header>
+
+              {/* View Switcher Container */}
+              <main className="page-container">
+                {currentView === 'dashboard' && (
+                  <DashboardView 
+                    benchmarkData={benchmarkData} 
+                    metrics={metrics} 
+                    viewMode={viewMode}
+                    onToggleViewMode={() => setViewMode(v => v === 'standard' ? 'focus' : 'standard')}
+                    onNavigateToCompare={() => setCurrentView('compare')}
+                    onNavigateToCopilot={() => setCurrentView('copilot')}
+                    onNavigateToIncidents={() => setCurrentView('incidents')}
+                    lang={lang}
+                  />
+                )}
+                {currentView === 'compare' && <ImageComparisonView lang={lang} />}
+                {currentView === 'overview' && <OverviewView lang={lang} />}
+                {currentView === 'incidents' && <IncidentsView lang={lang} />}
+                {currentView === 'copilot' && <CopilotView currentUser={currentUser} lang={lang} onLanguageChange={handleLanguageChange} />}
+                {currentView === 'stats' && <SituationStatsView currentUser={currentUser} metrics={metrics} lang={lang} />}
+              </main>
             </div>
-          </div>
-        </header>
 
-        {/* View Switcher Container */}
-        <main className="page-container">
-          {currentView === 'dashboard' && (
-            <DashboardView 
-              benchmarkData={benchmarkData} 
-              metrics={metrics} 
-              onNavigateToCompare={() => setCurrentView('compare')}
+            {/* Operator Authentication Modal */}
+            <AuthModal 
+              isOpen={isAuthModalOpen} 
+              onClose={() => setIsAuthModalOpen(false)} 
+              onLoginSuccess={handleLoginSuccess}
             />
-          )}
-          {currentView === 'compare' && <ImageComparisonView />}
-          {currentView === 'overview' && <OverviewView />}
-          {currentView === 'incidents' && <IncidentsView />}
-          {currentView === 'copilot' && <CopilotView currentUser={currentUser} />}
-          {currentView === 'stats' && <SituationStatsView currentUser={currentUser} metrics={metrics} />}
-        </main>
-      </div>
-
-      {/* Operator Authentication Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        onLoginSuccess={handleLoginSuccess}
-      />
-    </div>
-  );
-}
+          </div>
+        );
+      }

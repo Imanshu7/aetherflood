@@ -15,7 +15,7 @@ import {
   Search
 } from 'lucide-react';
 
-export default function IncidentsView() {
+export default function IncidentsView({ lang = 'en' }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [incidents, setIncidents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,12 +23,11 @@ export default function IncidentsView() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filterOptions = [
-    'All',
-    'CRITICAL',
-    'Landslide',
-    'Infrastructure',
-    'Flood',
-    'Radar'
+    { key: 'All', label: 'All' },
+    { key: 'CRITICAL', label: 'Critical' },
+    { key: 'Infrastructure', label: 'Bridges & Roads' },
+    { key: 'Flood', label: 'Floods' },
+    { key: 'Radar', label: 'Radar' }
   ];
 
   const fetchIncidents = async () => {
@@ -71,11 +70,11 @@ export default function IncidentsView() {
 
   const getCategoryIcon = (category) => {
     switch (category) {
-      case 'Radar': return <Radio size={16} color="#0066cc" />;
+      case 'Radar': return <Radio size={16} color="#1e783e" />;
       case 'Landslide': return <AlertTriangle size={16} color="#ff3b30" />;
       case 'Infrastructure': return <Navigation size={16} color="#ff9500" />;
-      case 'Flood': return <AlertTriangle size={16} color="#0066cc" />;
-      default: return <Building size={16} color="#34c759" />;
+      case 'Flood': return <AlertTriangle size={16} color="#1e783e" />;
+      default: return <Building size={16} color="#1e783e" />;
     }
   };
 
@@ -87,11 +86,11 @@ export default function IncidentsView() {
       case 'TRIAGED':
         return { color: '#ff9500', bg: 'rgba(255, 149, 0, 0.1)', border: '1px solid rgba(255, 149, 0, 0.25)', label: 'TRIAGED' };
       case 'DISPATCHED':
-        return { color: '#0066cc', bg: 'rgba(0, 102, 204, 0.08)', border: '1px solid rgba(0, 102, 204, 0.2)', label: 'TEAM DISPATCHED' };
+        return { color: '#1e783e', bg: 'rgba(30, 120, 62, 0.12)', border: '1px solid rgba(30, 120, 62, 0.25)', label: 'DISPATCHED' };
       case 'RESOLVED':
-        return { color: '#34c759', bg: 'rgba(52, 199, 89, 0.12)', border: '1px solid rgba(52, 199, 89, 0.25)', label: 'RESOLVED' };
+        return { color: '#1e783e', bg: 'rgba(30, 120, 62, 0.12)', border: '1px solid rgba(30, 120, 62, 0.25)', label: 'RESOLVED' };
       default:
-        return { color: '#1d1d1f', bg: '#f5f5f7', border: '1px solid rgba(0, 0, 0, 0.08)', label: status };
+        return { color: '#0a2213', bg: '#f2f7f4', border: '1px solid rgba(10, 34, 19, 0.08)', label: status };
     }
   };
 
@@ -116,10 +115,10 @@ export default function IncidentsView() {
         justifyContent: 'space-between',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        padding: '14px 20px',
-        borderRadius: '18px',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+        padding: '16px 22px',
+        borderRadius: '22px',
+        border: '1px solid rgba(10, 34, 19, 0.08)',
+        boxShadow: '0 4px 16px rgba(10, 34, 19, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
         flexWrap: 'wrap',
         gap: '12px'
       }}>
@@ -128,7 +127,7 @@ export default function IncidentsView() {
             width: '36px',
             height: '36px',
             borderRadius: '10px',
-            backgroundColor: '#0066cc',
+            backgroundColor: '#1e783e',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -138,23 +137,23 @@ export default function IncidentsView() {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#1d1d1f', letterSpacing: '-0.015em' }}>
-                TACTICAL TRIAGE & INCIDENT DISPATCH CONSOLE
+              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.015em' }}>
+                INCIDENTS
               </span>
               <span style={{
                 fontSize: '10px',
                 fontWeight: '600',
                 padding: '2px 8px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(52, 199, 89, 0.12)',
-                color: '#34c759',
-                border: '1px solid rgba(52, 199, 89, 0.25)'
+                backgroundColor: 'rgba(30, 120, 62, 0.12)',
+                color: '#1e783e',
+                border: '1px solid rgba(30, 120, 62, 0.25)'
               }}>
-                LIVE DATABASE PERSISTED
+                LIVE DB
               </span>
             </div>
-            <div style={{ fontSize: '11px', color: '#86868b', marginTop: '2px' }}>
-              Manage spatial incidents with real-time field triage, evacuation status, and emergency dispatch notes
+            <div style={{ fontSize: '11px', color: '#52735d', marginTop: '2px' }}>
+              Field triage, evacuation status, and emergency dispatch notes
             </div>
           </div>
         </div>
@@ -163,25 +162,25 @@ export default function IncidentsView() {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: '#f5f5f7',
-            border: '1px solid rgba(0, 0, 0, 0.06)',
+            backgroundColor: '#ffffff',
+            border: '1px solid rgba(10, 34, 19, 0.12)',
             borderRadius: '9999px',
             padding: '6px 14px',
             gap: '8px'
           }}>
-            <Search size={14} color="#86868b" />
+            <Search size={14} color="#52735d" />
             <input 
               type="text" 
               placeholder="Filter incidents..." 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px', color: '#1d1d1f' }}
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '150px', color: '#0a2213' }}
             />
           </div>
 
           <button 
             onClick={fetchIncidents}
-            className="btn-white-pill"
+            className="btn-dark-green-pill"
             style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: '600' }}
             disabled={isLoading}
           >
@@ -193,26 +192,22 @@ export default function IncidentsView() {
 
       {/* Filter Row */}
       <div className="filter-pill-row">
-        {filterOptions.map((filter) => {
-          const isActive = activeFilter === filter;
+        {filterOptions.map((opt) => {
+          const isActive = activeFilter === opt.key;
           return (
             <button
-              key={filter}
+              key={opt.key}
               className={`filter-pill ${isActive ? 'active' : ''}`}
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => setActiveFilter(opt.key)}
             >
-              {filter === 'CRITICAL' ? 'Critical (Landslides & Washouts)' : filter}
+              {opt.label}
             </button>
           );
         })}
       </div>
 
       {/* Incidents Cards Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '16px'
-      }}>
+      <div className="incidents-grid">
         {filteredIncidents.map((card) => {
           const isDanger = card.severity === 'CRITICAL';
           const statusStyle = getStatusBadge(card.status);
@@ -223,29 +218,33 @@ export default function IncidentsView() {
               key={card.id} 
               className="grey-card" 
               style={{
-                padding: '18px',
+                padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                borderLeft: isDanger ? '4px solid #ff3b30' : '4px solid #0066cc',
-                backgroundColor: '#FFFFFF'
+                border: isDanger ? '1px solid rgba(255, 59, 48, 0.28)' : '1px solid rgba(10, 34, 19, 0.08)',
+                borderRadius: '22px',
+                backgroundColor: '#FFFFFF',
+                boxShadow: isDanger 
+                  ? '0 6px 20px rgba(255, 59, 48, 0.06), 0 1px 3px rgba(10, 34, 19, 0.04)' 
+                  : '0 4px 16px rgba(10, 34, 19, 0.03), 0 1px 3px rgba(10, 34, 19, 0.03)'
               }}
             >
               <div>
                 {/* Card Header: Category + ID + Status Badge */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{
                       padding: '5px',
                       borderRadius: '8px',
-                      backgroundColor: '#f5f5f7',
+                      backgroundColor: '#f2f7f4',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
                       {getCategoryIcon(card.category)}
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#86868b' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d' }}>
                       {card.id} · {card.category.toUpperCase()}
                     </span>
                   </div>
@@ -264,10 +263,10 @@ export default function IncidentsView() {
                 </div>
 
                 {/* Title and Subtitle */}
-                <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: '#1d1d1f', margin: '0 0 5px 0', letterSpacing: '-0.01em' }}>
+                <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: '#0a2213', margin: '0 0 5px 0', letterSpacing: '-0.01em' }}>
                   {card.title}
                 </h4>
-                <p style={{ fontSize: '11.5px', color: '#86868b', lineHeight: '1.45', margin: '0 0 12px 0' }}>
+                <p style={{ fontSize: '11.5px', color: '#52735d', lineHeight: '1.45', margin: '0 0 12px 0' }}>
                   {card.subtitle}
                 </p>
 
@@ -277,16 +276,16 @@ export default function IncidentsView() {
                   flexWrap: 'wrap',
                   gap: '12px',
                   fontSize: '11px',
-                  color: '#86868b',
-                  backgroundColor: '#f5f5f7',
+                  color: '#52735d',
+                  backgroundColor: '#f2f7f4',
                   padding: '9px 12px',
                   borderRadius: '12px',
                   marginBottom: '12px',
-                  border: '1px solid rgba(0, 0, 0, 0.04)'
+                  border: '1px solid rgba(10, 34, 19, 0.06)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <MapPin size={13} color="#0066cc" />
-                    <span>Lat: <strong style={{ color: '#1d1d1f' }}>{card.lat.toFixed(3)}</strong>, Lon: <strong style={{ color: '#1d1d1f' }}>{card.lon.toFixed(3)}</strong></span>
+                    <MapPin size={13} color="#1e783e" />
+                    <span>Lat: <strong style={{ color: '#0a2213' }}>{card.lat.toFixed(3)}</strong>, Lon: <strong style={{ color: '#0a2213' }}>{card.lon.toFixed(3)}</strong></span>
                   </div>
 
                   {card.population_affected > 0 && (
@@ -297,14 +296,14 @@ export default function IncidentsView() {
                   )}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Clock size={13} color="#86868b" />
+                    <Clock size={13} color="#52735d" />
                     <span>{card.timestamp}</span>
                   </div>
                 </div>
 
                 {/* Assigned Team & Action Note */}
                 {card.action_taken && (
-                  <div style={{ fontSize: '11px', color: '#1d1d1f', backgroundColor: 'rgba(52, 199, 89, 0.08)', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(52, 199, 89, 0.2)' }}>
+                  <div style={{ fontSize: '11px', color: '#0a2213', backgroundColor: 'rgba(30, 120, 62, 0.08)', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(30, 120, 62, 0.2)' }}>
                     <strong style={{ color: '#1b5e20' }}>Action Log:</strong> {card.action_taken}
                   </div>
                 )}
@@ -314,7 +313,7 @@ export default function IncidentsView() {
               <div style={{
                 display: 'flex',
                 gap: '8px',
-                borderTop: '1px solid rgba(0, 0, 0, 0.06)',
+                borderTop: '1px solid rgba(10, 34, 19, 0.08)',
                 paddingTop: '12px',
                 marginTop: '8px',
                 flexWrap: 'wrap'
@@ -326,9 +325,10 @@ export default function IncidentsView() {
                     fontSize: '10.5px',
                     padding: '4px 10px',
                     borderRadius: '9999px',
-                    backgroundColor: card.status === 'ACKNOWLEDGED' ? '#0066cc' : '#f5f5f7',
-                    color: card.status === 'ACKNOWLEDGED' ? '#FFFFFF' : '#1d1d1f',
-                    border: card.status === 'ACKNOWLEDGED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                    backgroundColor: card.status === 'ACKNOWLEDGED' ? '#0d2818' : '#ffffff',
+                    color: card.status === 'ACKNOWLEDGED' ? '#FFFFFF' : '#0a2213',
+                    border: card.status === 'ACKNOWLEDGED' ? '1px solid rgba(30, 120, 62, 0.5)' : '1.5px solid rgba(13, 40, 24, 0.22)',
+                    boxShadow: card.status === 'ACKNOWLEDGED' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none'
                   }}
                   disabled={isUpdating}
                 >
@@ -342,9 +342,9 @@ export default function IncidentsView() {
                     fontSize: '10.5px',
                     padding: '4px 10px',
                     borderRadius: '9999px',
-                    backgroundColor: card.status === 'TRIAGED' ? '#ff9500' : '#f5f5f7',
-                    color: card.status === 'TRIAGED' ? '#FFFFFF' : '#1d1d1f',
-                    border: card.status === 'TRIAGED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                    backgroundColor: card.status === 'TRIAGED' ? '#ff9500' : '#ffffff',
+                    color: card.status === 'TRIAGED' ? '#FFFFFF' : '#0a2213',
+                    border: card.status === 'TRIAGED' ? 'none' : '1.5px solid rgba(13, 40, 24, 0.22)'
                   }}
                   disabled={isUpdating}
                 >
@@ -358,9 +358,10 @@ export default function IncidentsView() {
                     fontSize: '10.5px',
                     padding: '4px 10px',
                     borderRadius: '9999px',
-                    backgroundColor: card.status === 'DISPATCHED' ? '#0066cc' : '#f5f5f7',
-                    color: card.status === 'DISPATCHED' ? '#FFFFFF' : '#1d1d1f',
-                    border: card.status === 'DISPATCHED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                    backgroundColor: card.status === 'DISPATCHED' ? '#0d2818' : '#ffffff',
+                    color: card.status === 'DISPATCHED' ? '#FFFFFF' : '#0a2213',
+                    border: card.status === 'DISPATCHED' ? '1px solid rgba(30, 120, 62, 0.5)' : '1.5px solid rgba(13, 40, 24, 0.22)',
+                    boxShadow: card.status === 'DISPATCHED' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none'
                   }}
                   disabled={isUpdating}
                 >
@@ -374,9 +375,10 @@ export default function IncidentsView() {
                     fontSize: '10.5px',
                     padding: '4px 10px',
                     borderRadius: '9999px',
-                    backgroundColor: card.status === 'RESOLVED' ? '#34c759' : '#f5f5f7',
-                    color: card.status === 'RESOLVED' ? '#FFFFFF' : '#1d1d1f',
-                    border: card.status === 'RESOLVED' ? 'none' : '1px solid rgba(0, 0, 0, 0.06)'
+                    backgroundColor: card.status === 'RESOLVED' ? '#0d2818' : '#ffffff',
+                    color: card.status === 'RESOLVED' ? '#FFFFFF' : '#0a2213',
+                    border: card.status === 'RESOLVED' ? '1px solid rgba(30, 120, 62, 0.5)' : '1.5px solid rgba(13, 40, 24, 0.22)',
+                    boxShadow: card.status === 'RESOLVED' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none'
                   }}
                   disabled={isUpdating}
                 >

@@ -1,65 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&display=swap');
 
 :root {
   /* ==========================================================================
-     Apple Design System Tokens (iOS / macOS Human Interface Guidelines)
-     - Primary: Action Blue (#0066cc)
-     - Primary Focus: #0071e3
-     - Primary on Dark: #2997ff
-     - Ink: #1d1d1f (Apple near-black)
-     - Body Muted: #86868b
-     - Hairline: rgba(0, 0, 0, 0.08)
-     - Divider Soft: #f0f0f0
-     - Canvas: #ffffff
-     - Canvas Parchment: #f5f5f7 (Signature Apple off-white baseline)
-     - Surface Pearl: #fafafc
-     - Border Radii: Card 18px (rounded.lg), Pill 9999px (rounded.pill), Sm 8px
+     Dark Green and White Theme Tokens (Apple HIG Glassmorphism)
+     - Primary Dark Surface & Ink: Deep Dark Forest Green (#0a2213 / #0d2818)
+     - Light Surface: Crisp Pure White (#ffffff)
+     - Accent Live Green: #1e783e (Apple deep forest green)
+     - Accent Hover: #28cd41
+     - Canvas Background: Fresh Sage-Tinted Radial White (#f4f8f5 -> #e8f1ec)
+     - Secondary Dark Ink: #1f422b
+     - Muted Dark Ink: #52735d
      ========================================================================== */
-  --bg-main: #f5f5f7;
-  --bg-subtle: #fafafc;
-  --bg-sidebar: #1d1d1f;
-  --bg-topbar: rgba(255, 255, 255, 0.82);
+  --bg-main: #e8f1ec;
+  --bg-subtle: #f4f8f5;
+  --bg-sidebar: #0a2213;
+  --bg-topbar: rgba(255, 255, 255, 0.75);
   --card-bg: #ffffff;
-  --card-bg-light: #fafafc;
-  --card-border: rgba(0, 0, 0, 0.08);
-  --card-border-subtle: rgba(0, 0, 0, 0.05);
-  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.07);
+  --card-bg-light: #f7faf8;
+  --card-border: rgba(10, 34, 19, 0.08);
+  --card-border-subtle: rgba(10, 34, 19, 0.04);
+  --card-shadow: 0 4px 16px rgba(10, 34, 19, 0.04);
+  --card-shadow-hover: 0 8px 24px rgba(10, 34, 19, 0.08);
 
-  --theme-primary: #0066cc;
-  --theme-primary-hover: #0071e3;
-  --theme-primary-active: #005bb5;
-  --theme-accent: #0066cc;
+  --theme-primary: #1e783e;
+  --theme-primary-hover: #196634;
+  --theme-primary-active: #14522a;
+  --theme-accent: #1e783e;
   
-  --theme-safety: #34c759;
-  --theme-safety-bg: rgba(52, 199, 89, 0.10);
-  --theme-water: #0066cc;
-  --theme-water-bg: rgba(0, 102, 204, 0.08);
+  --theme-safety: #1e783e;
+  --theme-safety-bg: rgba(30, 120, 62, 0.12);
+  --theme-water: #1e783e;
+  --theme-water-bg: rgba(30, 120, 62, 0.12);
   --theme-critical: #ff3b30;
-  --theme-critical-bg: rgba(255, 59, 48, 0.09);
+  --theme-critical-bg: rgba(255, 59, 48, 0.12);
   --theme-warning: #ff9500;
-  --theme-warning-bg: rgba(255, 149, 0, 0.10);
+  --theme-warning-bg: rgba(255, 149, 0, 0.12);
 
-  --text-primary: #1d1d1f;
-  --text-secondary: #424245;
-  --text-muted: #86868b;
+  --text-primary: #0a2213;
+  --text-secondary: #1f422b;
+  --text-muted: #52735d;
   --text-on-dark: #ffffff;
 
-  --sidebar-active: #0066cc;
+  --sidebar-active: #1e783e;
   --sidebar-active-text: #ffffff;
-  --sidebar-text: #f5f5f7;
-  --sidebar-text-muted: #86868b;
-  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: #8fb89e;
+  --sidebar-border: rgba(30, 120, 62, 0.25);
 
   --pill-bg: #ffffff;
-  --pill-active: #0066cc;
+  --pill-active: #1e783e;
   --pill-active-text: #ffffff;
 
-  --border-radius-card: 18px;
+  --border-radius-card: 22px;
   --border-radius-pill: 9999px;
-  --border-radius-sm: 8px;
-  --border-radius-md: 12px;
-  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Inter", sans-serif;
+  --border-radius-sm: 10px;
+  --border-radius-md: 14px;
+  --font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
 }
 
 * {
@@ -70,13 +66,15 @@
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-main);
+  background: radial-gradient(120% 120% at 50% 0%, #f6faf7 0%, #ebf3ed 50%, #dfeae2 100%);
+  background-color: #ebf3ed;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   font-size: 13px;
   letter-spacing: -0.012em;
+  min-height: 100vh;
 }
 
 /* Custom Minimal Apple Scrollbars */
@@ -95,12 +93,12 @@ body {
   background-color: rgba(0, 0, 0, 0.28);
 }
 
-/* App Container Layout */
+/* App Container Layout (Edge-to-Edge Web Application) */
 .app-container {
   display: flex;
-  min-height: 100vh;
   width: 100vw;
-  background-color: var(--bg-main);
+  min-height: 100vh;
+  background: transparent;
 }
 
 /* Left Sidebar (macOS style dark sidebar) */
@@ -169,7 +167,7 @@ body {
 }
 
 .live-pulse-icon {
-  color: #34c759;
+  color: #1e783e;
   animation: pulse-ring 2.4s infinite ease-in-out;
 }
 
@@ -236,7 +234,7 @@ body {
   width: 30px;
   height: 30px;
   border-radius: 9999px;
-  background-color: #0066cc;
+  background-color: #1e783e;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -338,7 +336,7 @@ body {
 }
 
 .nav-item.active {
-  background-color: #0066cc;
+  background-color: #1e783e;
   color: #ffffff;
   font-weight: 600;
 }
@@ -410,50 +408,53 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  width: 100%;
+  min-height: 100%;
   overflow-y: auto;
-  background-color: var(--bg-main);
+  background-color: transparent;
 }
 
-/* Apple Sub-Nav Frosted Glass Header */
+/* Apple Sub-Nav Frosted Glass Header (Image 1 & 2 Aligned) */
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 24px;
-  background-color: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  gap: 20px;
+  padding: 8px 20px;
+  background-color: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
   position: sticky;
   top: 0;
   z-index: 1000;
   min-height: 52px;
+  gap: 16px;
 }
 
 .top-bar-left {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
-  margin-right: 8px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
 }
 
 .top-bar-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .top-bar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  margin-left: 8px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
 }
 
 .top-bar-title {
@@ -463,39 +464,72 @@ body {
   letter-spacing: -0.015em;
 }
 
-/* Apple Search Input (rounded.pill, quiet border, soft background) */
+/* Apple Search Input (rounded.pill, frosted glass, mic icon) */
 .top-bar-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background-color: rgba(118, 118, 128, 0.12);
-  border: 1px solid transparent;
-  padding: 6px 14px;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.60);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  padding: 5px 12px;
   border-radius: var(--border-radius-pill);
-  width: 190px;
+  width: 175px;
+  box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.95), 0 2px 6px rgba(0, 0, 0, 0.03);
   transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .top-bar-search:focus-within {
   background-color: #ffffff;
-  border-color: #0066cc;
-  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
-  width: 220px;
+  border-color: #1e783e;
+  box-shadow: 0 0 0 3px rgba(30, 120, 62, 0.18);
+  width: 210px;
 }
 
 .top-bar-search input {
   border: none;
   background-color: transparent;
   outline: none;
-  font-size: 12px;
+  font-size: 11.5px;
   width: 100%;
   color: var(--text-primary);
   font-family: inherit;
 }
 
 .top-bar-search input::placeholder {
-  color: var(--text-muted);
+  color: #8e8e93;
   font-size: 11.5px;
+}
+
+/* Apple Dark Action Capsule Pill (Dark Green & White Theme) */
+.top-bar-dark-pill {
+  background-color: #0d2818;
+  color: #ffffff;
+  border: 1px solid rgba(30, 120, 62, 0.3);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(10, 34, 19, 0.25);
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  white-space: nowrap;
+}
+
+.top-bar-dark-pill:hover {
+  background-color: #154c2a;
+  border-color: rgba(30, 120, 62, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(10, 34, 19, 0.35);
+}
+
+.top-bar-dark-pill:active {
+  transform: scale(0.96);
 }
 
 .top-bar-actions {
@@ -504,35 +538,39 @@ body {
   gap: 8px;
 }
 
-/* Apple Icon Button (circular or rounded.sm, active scale) */
+/* Apple Icon Button with Dark Green hover */
 .icon-btn {
-  background-color: rgba(118, 118, 128, 0.10);
-  border: 1px solid transparent;
-  width: 32px;
-  height: 32px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(10, 34, 19, 0.15);
+  width: 30px;
+  height: 30px;
   border-radius: var(--border-radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-primary);
+  box-shadow: 0 2px 6px rgba(10, 34, 19, 0.05);
   transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .icon-btn:hover {
-  background-color: rgba(118, 118, 128, 0.18);
-  color: #0066cc;
+  background-color: #0d2818;
+  color: #ffffff;
+  border-color: #0d2818;
+  box-shadow: 0 4px 10px rgba(10, 34, 19, 0.25);
 }
 
 .icon-btn:active {
   transform: scale(0.95);
+  background-color: #071a0e;
 }
 
 /* Page Content Container */
 .page-container {
-  padding: 20px 28px;
+  padding: 16px 20px;
   flex: 1;
-  background-color: var(--bg-main);
+  background-color: transparent;
 }
 
 /* Filter Pill Row */
@@ -549,25 +587,28 @@ body {
   padding: 6px 16px;
   border-radius: var(--border-radius-pill);
   font-size: 12px;
-  font-weight: 500;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+  border: 1.5px solid rgba(13, 40, 24, 0.22);
   background-color: #ffffff;
-  color: var(--text-secondary);
+  color: #0a2213;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(10, 34, 19, 0.04);
 }
 
 .filter-pill:hover {
-  background-color: #f5f5f7;
-  color: var(--text-primary);
+  background-color: #f2f7f4;
+  border-color: #0d2818;
+  color: #0d2818;
 }
 
 .filter-pill.active {
-  background-color: #0066cc;
+  background: linear-gradient(180deg, #133c23 0%, #0d2818 100%);
   color: #ffffff;
-  border-color: #0066cc;
+  border-color: rgba(30, 120, 62, 0.45);
   font-weight: 600;
+  box-shadow: 0 3px 10px rgba(10, 34, 19, 0.28);
 }
 
 .filter-pill:active {
@@ -578,17 +619,18 @@ body {
    Apple Cards: Pure White, 18px Radius (rounded.lg), 1px Soft Hairline
    ========================================================================== */
 .grey-card {
-  background-color: #ffffff;
-  border-radius: var(--border-radius-card);
+  background: #ffffff;
+  border-radius: 22px;
   padding: 20px 22px;
   color: var(--text-primary);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-  transition: box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  border: 1px solid rgba(10, 34, 19, 0.08);
+  box-shadow: 0 8px 24px rgba(10, 34, 19, 0.04), inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .grey-card:hover {
-  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(10, 34, 19, 0.07), inset 0 1px 1.5px rgba(255, 255, 255, 1);
 }
 
 .grey-card-title {
@@ -608,20 +650,21 @@ body {
   border-radius: var(--border-radius-pill);
   font-size: 11px;
   font-weight: 500;
-  background-color: rgba(118, 118, 128, 0.10);
+  background-color: rgba(30, 120, 62, 0.10);
   color: var(--text-primary);
-  border: 1px solid transparent;
+  border: 1px solid rgba(30, 120, 62, 0.2);
 }
 
 /* ==========================================================================
-   Apple Buttons (Primary Action Blue Pill & Secondary Ghost Pill)
+   Dark Green & White Buttons (Primary Dark Green Pill & Ghost White Pill)
    ========================================================================== */
-.btn-black-pill {
-  background-color: #0066cc;
+.btn-black-pill,
+.btn-dark-green-pill {
+  background: linear-gradient(180deg, #133c23 0%, #0d2818 100%);
   color: #ffffff;
   padding: 7px 18px;
   border-radius: var(--border-radius-pill);
-  border: 1px solid transparent;
+  border: 1px solid rgba(30, 120, 62, 0.4);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -630,39 +673,55 @@ body {
   gap: 6px;
   transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   letter-spacing: -0.01em;
+  box-shadow: 0 2px 8px rgba(10, 34, 19, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.btn-black-pill:hover {
-  background-color: #0071e3;
+.btn-black-pill:hover,
+.btn-dark-green-pill:hover {
+  background: linear-gradient(180deg, #1b5331 0%, #113c22 100%);
+  border-color: #1e783e;
   color: #ffffff;
+  box-shadow: 0 4px 14px rgba(10, 34, 19, 0.35);
 }
 
-.btn-black-pill:active {
+.btn-black-pill:active,
+.btn-dark-green-pill:active {
   transform: scale(0.96);
-  background-color: #005bb5;
+  background-color: #071a0e;
 }
 
 .btn-white-pill {
   background-color: #ffffff;
-  color: var(--text-primary);
+  color: #0a2213;
   padding: 6px 14px;
   border-radius: var(--border-radius-pill);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1.5px solid #0d2818;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
   letter-spacing: -0.01em;
+  box-shadow: 0 1px 4px rgba(10, 34, 19, 0.08);
 }
 
 .btn-white-pill:hover {
-  background-color: #f5f5f7;
-  border-color: rgba(0, 0, 0, 0.20);
-  color: #0066cc;
+  background-color: #0d2818;
+  border-color: #0d2818;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(10, 34, 19, 0.28);
+}
+
+.btn-white-pill:hover svg {
+  stroke: #2da854;
+  color: #2da854;
 }
 
 .btn-white-pill:active {
   transform: scale(0.96);
+  background-color: #071a0e;
 }
 
 /* Interactive Map Styling */
@@ -716,7 +775,7 @@ body {
 }
 
 .chat-bubble-user {
-  background-color: #0066cc;
+  background-color: #1e783e;
   color: #ffffff;
   padding: 12px 18px;
   border-radius: 18px 18px 4px 18px;
@@ -727,7 +786,7 @@ body {
   margin-bottom: 12px;
   font-weight: 400;
   border: 1px solid transparent;
-  box-shadow: 0 2px 6px rgba(0, 102, 204, 0.2);
+  box-shadow: 0 2px 6px rgba(30, 120, 62, 0.25);
 }
 
 /* Custom Div Icon for Leaflet */
@@ -775,3 +834,839 @@ body {
 .sar-tile-filter img {
   filter: grayscale(90%) contrast(135%) brightness(95%);
 }
+
+/* ==========================================================================
+   Mobile Responsive System & Adaptive Breakpoints
+   Organized UI for phones (375-430px), tablets (768-1024px), and desktops
+   ========================================================================== */
+
+/* Header Mobile Breakpoints */
+@media (max-width: 1024px) {
+  .top-bar {
+    padding: 8px 16px;
+    gap: 12px;
+  }
+  .top-bar-search {
+    width: 140px;
+  }
+}
+
+@media (max-width: 860px) {
+  .top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+    min-height: auto;
+    align-items: center;
+  }
+
+  .top-bar-left {
+    order: 1;
+    margin-right: auto;
+    flex: 0 0 auto;
+  }
+
+  .top-bar-right {
+    order: 2;
+    margin-left: auto;
+    flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .top-bar-search {
+    display: none;
+  }
+
+  .top-bar-center {
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    display: flex;
+    justify-content: flex-start;
+    padding: 4px 0 2px 0;
+  }
+
+  .top-bar-center::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 6px 10px;
+  }
+
+  .user-pill-name {
+    display: none;
+  }
+}
+
+/* Page Container Responsive Padding */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-container {
+    padding: 10px 8px;
+  }
+}
+
+/* Dashboard Header & KPI Grid */
+.dashboard-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 14px 20px;
+  border-radius: var(--border-radius-card);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header-bar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+/* Dashboard Main Layout Grid (Map + Sidebar) */
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* Dashboard Map Toolbar */
+.dashboard-map-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-map-toolbar {
+    padding: 8px 10px;
+  }
+}
+
+/* Responsive Map Viewport */
+@media (max-width: 768px) {
+  .map-viewport {
+    height: 380px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-viewport {
+    height: 340px !important;
+  }
+}
+
+/* Copernicus Browser Stepper Toolbar */
+.copernicus-stepper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background-color: #f5f5f7;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .copernicus-stepper-bar {
+    padding: 8px 10px;
+  }
+}
+
+/* Image Comparison Responsive Styles */
+.compare-side-by-side-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 860px) {
+  .compare-side-by-side-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.compare-viewport {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  user-select: none;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+  .compare-viewport {
+    height: 380px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .compare-viewport {
+    height: 340px !important;
+  }
+}
+
+/* Copilot Responsive Grid */
+.copilot-main-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .copilot-main-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.copilot-incidents-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 680px;
+}
+
+@media (max-width: 900px) {
+  .copilot-incidents-sidebar {
+    order: 2;
+    height: auto;
+    max-height: 300px;
+  }
+}
+
+.copilot-chat-card {
+  height: 680px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .copilot-chat-card {
+    order: 1;
+    height: 520px;
+  }
+}
+
+@media (max-width: 480px) {
+  .copilot-chat-card {
+    height: 480px;
+  }
+}
+
+/* Overview and Incidents Responsive Grids */
+.overview-grid, .incidents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .overview-grid, .incidents-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.overview-subgrid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .overview-subgrid-2col {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* Scrollable Table Container */
+.table-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Modal Responsive Rules */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-content {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    padding: 18px 16px !important;
+    border-radius: 18px;
+  }
+}
+
+/* ==========================================================================
+   Figma Liquid Glass & Dark Mission Control Design System (Node 2-398)
+   ========================================================================== */
+
+/* Top Header Action Pill (Figma Dark Action Button) */
+.figma-top-action-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background-color: #0d2818;
+  color: #ffffff;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(30, 120, 62, 0.3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  box-shadow: 0 2px 8px rgba(10, 34, 19, 0.25);
+  flex-shrink: 0;
+}
+
+.figma-top-action-pill:hover {
+  background-color: #154c2a;
+  border-color: rgba(30, 120, 62, 0.5);
+  transform: translateY(-1px);
+}
+
+.figma-top-action-pill:active {
+  transform: scale(0.96);
+}
+
+.figma-top-action-pill .live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background-color: #1e783e;
+  box-shadow: 0 0 8px #1e783e;
+  display: inline-block;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ==========================================================================
+   Apple Human Interface Components (Image 1 & 2 Master Layout)
+   ========================================================================== */
+.figma-layout-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 14px;
+  align-items: start;
+  width: 100%;
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.figma-layout-container.focus-mode {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .figma-layout-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.figma-column-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 4 Equal Sculpted Apple KPI Cards in Top Row (Image 1 Aligned) */
+.figma-kpi-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .figma-kpi-4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .figma-kpi-4col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.figma-kpi-card {
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 13px 16px;
+  border: 1px solid rgba(10, 34, 19, 0.08);
+  box-shadow: 
+    0 8px 24px rgba(10, 34, 19, 0.04), 
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(10, 34, 19, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 102px;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  cursor: default;
+}
+
+.figma-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(10, 34, 19, 0.07), inset 0 1px 1.5px rgba(255, 255, 255, 1);
+}
+
+.figma-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.figma-kpi-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #264933;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.figma-kpi-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.figma-kpi-val {
+  font-size: 23px;
+  font-weight: 700;
+  color: #0a2213;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 2px 0;
+}
+
+.figma-kpi-val span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #52735d;
+  margin-left: 3px;
+}
+
+.figma-kpi-sub {
+  font-size: 10px;
+  color: #636366;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+/* Outer Enclosure for Dark Ribbon & Map (Image 1 & 2 Aligned) */
+.figma-left-enclosure {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border-radius: 28px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Dark Capsule Ribbon inside Enclosure (Dark Green & White Theme) */
+.figma-dark-ribbon {
+  background-color: #0d2818;
+  border-radius: 9999px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(30, 120, 62, 0.25);
+  box-shadow: 0 6px 20px rgba(10, 34, 19, 0.28);
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.figma-ribbon-pills-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* Translucent White Ribbon Pills matching Dark Green Enclosure */
+.figma-ribbon-pill {
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 2px 6px rgba(10, 34, 19, 0.2);
+}
+
+.figma-ribbon-pill.active {
+  background: linear-gradient(180deg, #1f6b3a 0%, #144f29 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(10, 34, 19, 0.35);
+}
+
+.figma-ribbon-pill.inactive {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.figma-ribbon-pill.inactive:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* Circular Action Bead on Right of Ribbon (Dark Green & White Theme) */
+.figma-circle-bead {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 2px 6px rgba(10, 34, 19, 0.2);
+}
+
+.figma-circle-bead:hover {
+  transform: scale(1.08);
+  background: #1b6b37;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(27, 107, 55, 0.5);
+}
+
+.figma-circle-bead:active {
+  transform: scale(0.92);
+}
+
+/* Dark Split Ribbon in Focus Mode (Dark Green & White Theme) */
+.figma-dark-ribbon-focus-mode {
+  background-color: #0d2818;
+  border-radius: 20px;
+  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(30, 120, 62, 0.25);
+  box-shadow: 0 6px 20px rgba(10, 34, 19, 0.28);
+}
+
+@media (max-width: 800px) {
+  .figma-dark-ribbon-focus-mode {
+    grid-template-columns: 1fr;
+  }
+}
+
+.figma-focus-left-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.figma-focus-right-wide {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 2px 6px rgba(10, 34, 19, 0.2);
+  color: #ffffff;
+  overflow-x: auto;
+}
+
+/* White Map Canvas Card inside Enclosure */
+.figma-map-canvas-card {
+  background-color: #ffffff;
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+  height: 530px;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Floating Stepper Component (Figma Stepper Layer in Top-Left) */
+.figma-stepper {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+  display: flex;
+  flex-direction: column;
+  width: 32px;
+  overflow: hidden;
+}
+
+.figma-stepper-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0a2213;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.figma-stepper-btn:hover {
+  background-color: #0d2818;
+  color: #ffffff;
+}
+
+.figma-stepper-btn:active {
+  background-color: #071a0e;
+}
+
+.figma-stepper-divider {
+  height: 1px;
+  width: 100%;
+  background-color: rgba(10, 34, 19, 0.08);
+}
+
+/* Floating Dark Action Bead in Top-Right of Map (Image 2 Aligned) */
+.figma-map-dark-action-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1000;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #0d2818;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid rgba(30, 120, 62, 0.35);
+  box-shadow: 0 6px 20px rgba(10, 34, 19, 0.35);
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.figma-map-dark-action-btn:hover {
+  transform: scale(1.08);
+  background: #154c2a;
+  border-color: rgba(30, 120, 62, 0.55);
+  box-shadow: 0 8px 24px rgba(10, 34, 19, 0.45);
+}
+
+.figma-map-dark-action-btn:active {
+  transform: scale(0.92);
+}
+
+/* Floating Map Controls in Top-Right */
+.figma-map-floating-bar {
+  position: absolute;
+  top: 14px;
+  right: 60px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(10, 34, 19, 0.08);
+  box-shadow: 0 4px 16px rgba(10, 34, 19, 0.08);
+  max-width: calc(100% - 120px);
+  overflow-x: auto;
+}
+
+/* Right Column: Two Stacked Dark Green Apple Cards (Dark Green & White Theme) */
+.figma-column-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.figma-dark-card {
+  background-color: #0d2818;
+  color: #ffffff;
+  border-radius: 26px;
+  border: 1px solid rgba(30, 120, 62, 0.25);
+  box-shadow: 0 10px 32px rgba(10, 34, 19, 0.26);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.figma-dark-card:hover {
+  border-color: rgba(30, 120, 62, 0.45);
+  box-shadow: 0 14px 38px rgba(10, 34, 19, 0.34);
+}
+
+.figma-dark-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(30, 120, 62, 0.20);
+  padding-bottom: 7px;
+}
+
+.figma-dark-card-title span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.figma-dark-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.figma-dark-badge.danger {
+  background-color: rgba(255, 59, 48, 0.20);
+  color: #ff453a;
+  border: 1px solid rgba(255, 59, 48, 0.35);
+}
+
+.figma-dark-badge.active {
+  background-color: rgba(30, 120, 62, 0.20);
+  color: #1e783e;
+  border: 1px solid rgba(30, 120, 62, 0.35);
+}
+
+.figma-dark-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(30, 120, 62, 0.15);
+  font-size: 10.5px;
+  transition: all 0.15s ease;
+}
+
+.figma-dark-item:hover {
+  background-color: rgba(30, 120, 62, 0.16);
+  border-color: rgba(30, 120, 62, 0.35);
+  transform: translateX(2px);
+}
+
+
