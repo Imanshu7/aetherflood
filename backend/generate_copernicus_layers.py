@@ -43,7 +43,9 @@ def create_feathered_alpha(w, h, feather_px=55):
     return (alpha * 255).astype(np.uint8)
 
 def main():
-    sat_dir = r"d:\iitp csda\iitmandi\frontend\public\satellite"
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sat_dir = os.path.join(repo_root, "frontend", "public", "satellite")
+    os.makedirs(sat_dir, exist_ok=True)
     base_path = os.path.join(sat_dir, "pristine_base_raw.png")
     
     if not os.path.exists(base_path):

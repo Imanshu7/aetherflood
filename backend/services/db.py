@@ -1,26 +1,44 @@
 """
 AetherFlood Database Service (SQLite-backed Spatial Data Store)
 Manages real persistent database records for:
-1. Spatial Incidents & Field Triage Dispatches
-2. Multi-temporal Satellite Orbit Passes (Sentinel-1 Track 121, Sentinel-2 Optical, EMSR927)
+1. Spatial Incidents & Field Triage Dispatches with strict incident isolation:
+   - Incident A: Nepal–Tibet Historical Flood (2026-08-26)
+   - Incident B: Budhi Gandaki Developing Flood (2026-10-11)
+2. Satellite & Sensor Inputs (Historical Sentinel-1 Orbit 121, Sentinel-2 Optical, Copernicus DEM)
 3. Pipeline Telemetry Audit Logs
 """
 
 import sqlite3
 import os
-import json
 import datetime
 from typing import Dict, Any, List, Optional
+from backend.services.incident_data import INCIDENT_A, INCIDENT_B
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "aetherflood.db")
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "aetherflood.db")
+
+def get_db_path() -> str:
+    """Return the active SQLite database path, copying to /tmp in Vercel serverless environments."""
+    if os.getenv("VERCEL"):
+        tmp_db = "/tmp/aetherflood.db"
+        if not os.path.exists(tmp_db) and os.path.exists(DEFAULT_DB_PATH):
+            try:
+                import shutil
+                shutil.copy2(DEFAULT_DB_PATH, tmp_db)
+            except Exception as e:
+                print(f"[WARN] Failed copying SQLite DB to /tmp: {e}")
+        return tmp_db
+    return DEFAULT_DB_PATH
+
+DB_PATH = get_db_path()
 
 class DatabaseService:
     def __init__(self):
-        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        active_path = get_db_path()
+        os.makedirs(os.path.dirname(active_path), exist_ok=True)
         self.init_db()
 
     def get_connection(self):
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(get_db_path())
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -28,29 +46,34 @@ class DatabaseService:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # 1. Incidents Table
+            # 1. Incidents Table with strict incident_id partition
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS incidents (
                     id TEXT PRIMARY KEY,
+                    incident_id TEXT NOT NULL,
                     title TEXT NOT NULL,
                     subtitle TEXT NOT NULL,
+                    location_name TEXT NOT NULL,
                     category TEXT NOT NULL,
                     severity TEXT NOT NULL,
+                    verification_state TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    source_name TEXT NOT NULL,
+                    source_url TEXT NOT NULL,
                     status TEXT NOT NULL,
                     lat REAL NOT NULL,
                     lon REAL NOT NULL,
-                    population_affected INTEGER DEFAULT 0,
-                    assigned_team TEXT,
                     action_taken TEXT,
                     timestamp TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
             """)
 
-            # 2. Satellite Passes Table (Real multi-temporal orbital history)
+            # 2. Satellite Passes Table (Multi-temporal orbital history for Incident A)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS satellite_passes (
                     id TEXT PRIMARY KEY,
+                    incident_id TEXT NOT NULL,
                     sensor TEXT NOT NULL,
                     date TEXT NOT NULL,
                     orbit_track INTEGER NOT NULL,
@@ -77,186 +100,165 @@ class DatabaseService:
 
             conn.commit()
 
-        # Seed initial real ground-truth data if empty
+        # Seed initial source-attributed records
         self._seed_initial_data()
 
     def _seed_initial_data(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             
-            # Check if incidents exist
+            # Check if columns exist; if old schema, upgrade
+            cursor.execute("PRAGMA table_info(incidents)")
+            cols = [col["name"] for col in cursor.fetchall()]
+            if "incident_id" not in cols:
+                cursor.execute("DROP TABLE incidents")
+                cursor.execute("""
+                    CREATE TABLE incidents (
+                        id TEXT PRIMARY KEY,
+                        incident_id TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        subtitle TEXT NOT NULL,
+                        location_name TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        severity TEXT NOT NULL,
+                        verification_state TEXT NOT NULL,
+                        source_id TEXT NOT NULL,
+                        source_name TEXT NOT NULL,
+                        source_url TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        lat REAL NOT NULL,
+                        lon REAL NOT NULL,
+                        action_taken TEXT,
+                        timestamp TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                """)
+                conn.commit()
+
             cursor.execute("SELECT COUNT(*) as count FROM incidents")
             if cursor.fetchone()["count"] == 0:
-                initial_incidents = [
-                    (
-                        "INC-001",
-                        "Ramche Landslide & Road Severance",
-                        "Pasang Lhamu Highway (NH09 km 61) impassable · 3.8 km cut by rockslide & mud",
-                        "Landslide",
-                        "CRITICAL",
-                        "TRIAGED",
-                        28.062,
-                        85.241,
-                        1420,
-                        "Heavy Engineering Battalion",
-                        "Bailey bridge dispatched from Betrawati depot; clearing scheduled at 06:00 UTC",
-                        "2026-08-26 04:15 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-002",
-                        "Trishuli River Basin SAR Inundation",
-                        "Sentinel-1 C-SAR log-ratio backscatter drop < -3.2 dB · 14.82 km² extent",
-                        "Radar",
-                        "HIGH",
-                        "ACKNOWLEDGED",
-                        28.035,
-                        85.230,
-                        0,
-                        "Copernicus Remote Sensing Team",
-                        "Slope mask <= 18° applied to eliminate layover; multi-temporal validation confirmed",
-                        "2026-08-26 05:22 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-003",
-                        "Ramche Trishuli Crossing Bridge Washout",
-                        "Pre-event OSM bridge node severed · 42m span washed into torrent",
-                        "Infrastructure",
-                        "CRITICAL",
-                        "DISPATCHED",
-                        28.062,
-                        85.241,
-                        1420,
-                        "Air-Cav Rapid Response Unit",
-                        "Rotary-wing reconnaissance airborne; vehicular crossing suspended indefinitely",
-                        "2026-08-26 06:10 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-004",
-                        "Syaphrubesi Settlement Cut Off",
-                        "NetworkX graph isolated · 2,180 residents disconnected from road access",
-                        "Infrastructure",
-                        "URGENT",
-                        "TRIAGED",
-                        28.156,
-                        85.334,
-                        2180,
-                        "Nepal Red Cross & Army Relief",
-                        "Air-drop coordinates established on river gravel terrace [28.158 N, 85.338 E]",
-                        "2026-08-26 06:45 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-005",
-                        "Mailung Hydropower Suspension Bridge Snap",
-                        "Trishuli riverside track submerged under 2.8m water · Suspension cables failed",
-                        "Infrastructure",
-                        "HIGH",
-                        "ACKNOWLEDGED",
-                        28.093,
-                        85.228,
-                        890,
-                        "District Infrastructure Taskforce",
-                        "Local foot-traffic redirected to upper ridge trail; pedestrian crossing unsafe",
-                        "2026-08-26 07:15 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-006",
-                        "Dhunche District Hospital Isolated In-Zone",
-                        "Hospital operational (35 beds) but highway to plains cut · Surgical transfer severed",
-                        "Flood",
-                        "HIGH",
-                        "ACKNOWLEDGED",
-                        28.114,
-                        85.301,
-                        2800,
-                        "District Medical Command",
-                        "Helicopter medevac on standby for critical triage patients; oxygen supplies verified",
-                        "2026-08-26 07:50 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-007",
-                        "Betrawati Nuwakot Ridge Bypass Route",
-                        "Detour factor 2.4x via Nuwakot rural ridgeline (+42 min delay) · Primary bridge open",
-                        "Infrastructure",
-                        "MODERATE",
-                        "RESOLVED",
-                        27.978,
-                        85.184,
-                        3450,
-                        "Traffic Management Police",
-                        "Checkpost established; light vehicular convoys permitted with caution",
-                        "2026-08-26 08:05 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    ),
-                    (
-                        "INC-008",
-                        "Trishuli Hydropower Substation Buffer",
-                        "Floodwaters within 1.2m of perimeter containment dike · Telemetry continuous",
-                        "Sensors",
-                        "LOW",
-                        "ACKNOWLEDGED",
-                        27.990,
-                        85.195,
-                        0,
-                        "NEA Hydropower Security",
-                        "Turbine 2 throttled down as precautionary sediment protection measure",
-                        "2026-08-26 08:30 UTC",
-                        datetime.datetime.utcnow().isoformat() + "Z"
-                    )
-                ]
+                now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                records_to_insert = []
+                
+                # Insert Incident A verified records
+                for rec in INCIDENT_A.sub_records:
+                    records_to_insert.append((
+                        rec.id,
+                        rec.incident_id,
+                        rec.title,
+                        rec.subtitle,
+                        rec.location_name,
+                        rec.category,
+                        rec.severity,
+                        rec.verification_state,
+                        rec.source_id,
+                        rec.source_name,
+                        rec.source_url,
+                        rec.status,
+                        rec.lat,
+                        rec.lon,
+                        rec.action_note or "",
+                        rec.timestamp,
+                        now_str
+                    ))
+
+                # Insert Incident B verified records
+                for rec in INCIDENT_B.sub_records:
+                    records_to_insert.append((
+                        rec.id,
+                        rec.incident_id,
+                        rec.title,
+                        rec.subtitle,
+                        rec.location_name,
+                        rec.category,
+                        rec.severity,
+                        rec.verification_state,
+                        rec.source_id,
+                        rec.source_name,
+                        rec.source_url,
+                        rec.status,
+                        rec.lat,
+                        rec.lon,
+                        rec.action_note or "",
+                        rec.timestamp,
+                        now_str
+                    ))
+
                 cursor.executemany("""
                     INSERT INTO incidents (
-                        id, title, subtitle, category, severity, status, lat, lon, population_affected, assigned_team, action_taken, timestamp, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, initial_incidents)
+                        id, incident_id, title, subtitle, location_name, category, severity,
+                        verification_state, source_id, source_name, source_url, status,
+                        lat, lon, action_taken, timestamp, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, records_to_insert)
 
-            # Check if satellite passes exist
+            # Check if satellite_passes has incident_id
+            cursor.execute("PRAGMA table_info(satellite_passes)")
+            pass_cols = [col["name"] for col in cursor.fetchall()]
+            if "incident_id" not in pass_cols:
+                cursor.execute("DROP TABLE satellite_passes")
+                cursor.execute("""
+                    CREATE TABLE satellite_passes (
+                        id TEXT PRIMARY KEY,
+                        incident_id TEXT NOT NULL,
+                        sensor TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        orbit_track INTEGER NOT NULL,
+                        polarization TEXT NOT NULL,
+                        mean_backscatter_db REAL NOT NULL,
+                        water_extent_km2 REAL NOT NULL,
+                        cloud_cover_pct REAL NOT NULL,
+                        status TEXT NOT NULL,
+                        notes TEXT
+                    )
+                """)
+                conn.commit()
+
             cursor.execute("SELECT COUNT(*) as count FROM satellite_passes")
             if cursor.fetchone()["count"] == 0:
                 initial_passes = [
                     (
                         "PASS-01",
+                        "nepal-tibet-2026-08-26",
                         "Sentinel-1A C-SAR",
                         "2026-08-02",
                         121,
                         "VV + VH",
                         -12.4,
-                        3.10,
+                        0.0,
                         78.0,
                         "ARCHIVED_BASELINE",
                         "Dry seasonal baseline pass; identical relative orbit track #121"
                     ),
                     (
                         "PASS-02",
+                        "nepal-tibet-2026-08-26",
                         "Sentinel-1A C-SAR",
                         "2026-08-14",
                         121,
                         "VV + VH",
                         -12.1,
-                        3.25,
+                        0.0,
                         82.0,
                         "PRE_EVENT_REFERENCE",
                         "Official pre-disaster SAR scene; exactly 12 days prior to flood event"
                     ),
                     (
                         "PASS-03",
+                        "nepal-tibet-2026-08-26",
                         "Sentinel-1A C-SAR",
                         "2026-08-26",
                         121,
                         "VV + VH",
                         -16.8,
-                        14.82,
+                        0.0,
                         85.0,
-                        "POST_EVENT_FLOOD",
-                        "Disaster acquisition; log-ratio backscatter drop of -4.7 dB across valley"
+                        "POST_EVENT_ACQUISITION",
+                        "Post-disaster acquisition; relative orbit track #121 preserved"
                     ),
                     (
                         "PASS-04",
+                        "nepal-tibet-2026-08-26",
                         "Sentinel-2B MSI (Optical)",
                         "2026-08-25",
                         0,
@@ -265,37 +267,37 @@ class DatabaseService:
                         0.0,
                         91.4,
                         "OBSCURED_BY_CLOUDS",
-                        "Monsoon cloud deck obstructed optical view; bypassed in favor of C-SAR"
+                        "Monsoon cloud deck obstructed optical view in high-altitude valley"
                     ),
                     (
                         "PASS-05",
-                        "Copernicus EMS EMSR927",
-                        "2026-08-27",
-                        121,
-                        "Rapid Damage Delineation",
-                        -16.5,
-                        15.10,
-                        80.0,
-                        "VALIDATION_BENCHMARK",
-                        "Official EU Copernicus reference; 98.1% F1 spatial agreement"
+                        "nepal-tibet-2026-08-26",
+                        "Copernicus DEM (WorldDEM-30)",
+                        "2026-08-26",
+                        0,
+                        "Elevation & Slope (30m)",
+                        0.0,
+                        0.0,
+                        0.0,
+                        "TERRAIN_DEM_INPUT",
+                        "Copernicus 30m Global DEM raster input for physical slope conditioning (>18°)"
                     )
                 ]
                 cursor.executemany("""
                     INSERT INTO satellite_passes (
-                        id, sensor, date, orbit_track, polarization, mean_backscatter_db, water_extent_km2, cloud_cover_pct, status, notes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        id, incident_id, sensor, date, orbit_track, polarization, mean_backscatter_db, water_extent_km2, cloud_cover_pct, status, notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, initial_passes)
 
             # Check if pipeline logs exist
             cursor.execute("SELECT COUNT(*) as count FROM pipeline_logs")
             if cursor.fetchone()["count"] == 0:
                 initial_logs = [
-                    ("2026-08-26 04:00:12 UTC", "DATA_INGESTION", "INFO", "Queried ohsome API baseline: timestamp=2026-07-27T00:00:00Z. Ingested 342 buildings, 18.65km roads.", "OSM-OHSOME-07-27"),
-                    ("2026-08-26 04:02:45 UTC", "SAR_CALIBRATION", "INFO", "Sentinel-1A Track 121 pre/post pair validated (2026-08-14 vs 2026-08-26). Same look geometry confirmed.", "S1-ORBIT-TRACK-121"),
-                    ("2026-08-26 04:05:18 UTC", "TERRAIN_MASK", "INFO", "Applied Copernicus WorldDEM-30 slope filter <= 18.0 deg. 8.4 km2 mountain radar shadows masked.", "COP-WORLDDEM-30"),
-                    ("2026-08-26 04:08:30 UTC", "SHAPELY_OVERLAY", "INFO", "Calculated vector intersection. Inundation extent: 14.82 km2. Submerged roads: 18.65 km.", "SHAPELY-VECTOR-INTERSECT"),
-                    ("2026-08-26 04:11:05 UTC", "NETWORKX_ROUTING", "WARN", "Topological severance detected: 6 edges cut. 4 isolated settlements (7,770 pop). Hospital route severed.", "NX-DIJKSTRA-SEVERANCE"),
-                    ("2026-08-26 04:15:00 UTC", "SITREP_ENGINE", "INFO", "Generated bilingual UN OCHA & NDRRMA Situation Reports with 100% zero-hallucination factual grounding.", "AETHER-COPILOT-PROVENANCE")
+                    ("2026-08-26 09:53:00 UTC", "COPERNICUS_DEM", "INFO", "Copernicus WorldDEM-30 30m terrain elevation raster ingested for hydraulic slope masking.", "COPERNICUS-DEM-30M"),
+                    ("2026-08-27 10:30:00 UTC", "SATELLITE_CATALOGUE", "INFO", "Co-registered Copernicus Sentinel-2 Betrawati/Gerkhu pair (12 Aug vs 27 Aug 2026).", "S2-BETRAWATI-PAIR"),
+                    ("2026-08-27 12:00:00 UTC", "SATELLITE_CATALOGUE", "INFO", "Co-registered ESA/USGS Glacier headwaters SWIR pair (24 Aug S2 vs 26 Aug Landsat-9).", "ESA-GLACIER-SWIR"),
+                    ("2026-10-11 11:30:00 NPT", "REPORT_INGESTION", "INFO", "Ingested ICIMOD preliminary report on Budhi Gandaki suspected landslide-dam breach.", "ICIMOD-2026-10-11"),
+                    ("2026-10-11 14:00:00 NPT", "REPORT_INGESTION", "INFO", "Ingested Kathmandu Post report on Gorkha river corridor bridge and settlement disruptions.", "TKP-2026-10-11")
                 ]
                 cursor.executemany("""
                     INSERT INTO pipeline_logs (timestamp, component, level, message, proof_token)
@@ -305,43 +307,90 @@ class DatabaseService:
             conn.commit()
 
     # --- Incident Methods ---
-    def get_all_incidents(self, category_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_incidents(
+        self,
+        category_filter: Optional[str] = None,
+        incident_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            conditions = []
+            params = []
+
+            if incident_id:
+                conditions.append("incident_id = ?")
+                params.append(incident_id)
+
             if category_filter and category_filter != "All":
-                cursor.execute("SELECT * FROM incidents WHERE category = ? ORDER BY severity = 'CRITICAL' DESC, timestamp DESC", (category_filter,))
-            else:
-                cursor.execute("SELECT * FROM incidents ORDER BY severity = 'CRITICAL' DESC, timestamp DESC")
+                conditions.append("category = ?")
+                params.append(category_filter)
+
+            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            query = f"SELECT * FROM incidents {where_clause} ORDER BY severity = 'CRITICAL' DESC, timestamp DESC"
+            cursor.execute(query, params)
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
-    def update_incident_status(self, incident_id: str, new_status: str, action_note: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def update_incident_status(self, record_id: str, new_status: str, action_note: Optional[str] = None) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            now = datetime.datetime.utcnow().isoformat() + "Z"
-            if action_note:
-                cursor.execute("""
-                    UPDATE incidents 
-                    SET status = ?, action_taken = ?, updated_at = ?
-                    WHERE id = ?
-                """, (new_status, action_note, now, incident_id))
+            now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+            exact_match = cursor.execute(
+                "SELECT * FROM incidents WHERE id = ?",
+                (record_id,),
+            ).fetchone()
+            if exact_match is not None:
+                target_id = exact_match["id"]
+                target_incident_id = exact_match["incident_id"]
+                filter_sql = "WHERE id = ?"
+                filter_params = (target_id,)
+                row = exact_match
             else:
-                cursor.execute("""
-                    UPDATE incidents 
+                incident_match = cursor.execute(
+                    "SELECT * FROM incidents WHERE incident_id = ? ORDER BY id LIMIT 1",
+                    (record_id,),
+                ).fetchone()
+                if incident_match is None:
+                    return None
+                target_id = incident_match["id"]
+                target_incident_id = incident_match["incident_id"]
+                filter_sql = "WHERE incident_id = ?"
+                filter_params = (target_incident_id,)
+                row = incident_match
+
+            if action_note:
+                cursor.execute(
+                    f"""
+                    UPDATE incidents
+                    SET status = ?, action_taken = ?, updated_at = ?
+                    {filter_sql}
+                    """,
+                    (new_status, action_note, now, *filter_params),
+                )
+            else:
+                cursor.execute(
+                    f"""
+                    UPDATE incidents
                     SET status = ?, updated_at = ?
-                    WHERE id = ?
-                """, (new_status, now, incident_id))
+                    {filter_sql}
+                    """,
+                    (new_status, now, *filter_params),
+                )
             conn.commit()
 
-            cursor.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,))
-            row = cursor.fetchone()
-            return dict(row) if row else None
+            cursor.execute("SELECT * FROM incidents WHERE id = ?", (target_id,))
+            updated_row = cursor.fetchone()
+            return dict(updated_row) if updated_row else None
 
     # --- Satellite Passes Methods ---
-    def get_satellite_passes(self) -> List[Dict[str, Any]]:
+    def get_satellite_passes(self, incident_id: Optional[str] = None) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM satellite_passes ORDER BY date ASC")
+            if incident_id:
+                cursor.execute("SELECT * FROM satellite_passes WHERE incident_id = ? ORDER BY date ASC", (incident_id,))
+            else:
+                cursor.execute("SELECT * FROM satellite_passes ORDER BY date ASC")
             return [dict(r) for r in cursor.fetchall()]
 
     # --- Pipeline Logs Methods ---
@@ -354,7 +403,7 @@ class DatabaseService:
     def add_pipeline_log(self, component: str, level: str, message: str, proof_token: Optional[str] = None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+            now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
             cursor.execute("""
                 INSERT INTO pipeline_logs (timestamp, component, level, message, proof_token)
                 VALUES (?, ?, ?, ?, ?)

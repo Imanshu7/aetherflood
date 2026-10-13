@@ -1,0 +1,28 @@
+# Secrets and local configuration - never bake these into the image.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Frontend - the Space serves the API only.
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Tooling / OS noise
+.git/
+.vscode/
+.idea/
+.DS_Store
+*.log
+smoke/
+__pycache__/

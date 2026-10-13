@@ -1,0 +1,28 @@
+# AetherFlood backend runtime dependencies.
+# Pinned to the major versions the code was developed and tested against.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# HTTP clients (Copernicus/CDSE, OpenStreetMap/ohsome, Terrarium tiles, Sarvam AI)
+requests==2.32.3
+httpx==0.28.1
+
+# Numeric stack used by the change-detection and DEM tracing services.
+numpy==1.26.4
+scipy==1.14.1
+
+# Required at request time (imported by backend/services/jobs.py at module
+# level, which the Copilot chat and analysis-job endpoints import).
+networkx==3.4.2
+
+# Required by the DEM trace endpoint and the change-detection image loaders.
+Pillow==11.0.0
+
+# PyTorch is intentionally NOT pinned: change_detection_pipeline.py already
+# degrades gracefully when torch is absent (try/except -> mock), and the
+# CPU-only wheel is ~800 MB. Install it only if you intend to run the model.
+
+# Note: the local Ollama path in copilot_engine.py degrades gracefully when the
+# server is unreachable, so Ollama is intentionally NOT a container dependency.

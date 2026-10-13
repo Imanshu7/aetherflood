@@ -18,17 +18,26 @@ Strict Remote Sensing Architecture:
    - Integrates Copernicus WorldDEM-30 slope mask (slopes > 18° masked out to remove radar shadow ponds).
 """
 
-import os
-import math
+from __future__ import annotations
+
 import datetime
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional, Tuple, Union
 
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch.utils.data import Dataset, DataLoader
+except ImportError:
+    torch = None
+    class _MockNN:
+        Module = object
+    nn = _MockNN()
+    F = None
+    Dataset = object
+    DataLoader = None
 
 
 # =============================================================================
@@ -554,7 +563,7 @@ def predict_change_segmentation(
         logits = model(t_pre, t_post)
         preds = torch.argmax(logits, dim=1).squeeze(0).cpu().numpy()
 
-    # Operational Remote Sensing Physics Prior (Sen1Floods11 / EMSR927 calibration):
+    # Operational Remote Sensing Physics Prior (Sen1Floods11 training dataset & Copernicus DEM terrain slope filter):
     # Standing water specular scatter causes backscatter drop <= -3.2 dB in VV
     raw_delta_vv = (post_image[0] - pre_image[0]) if np.any(pre_image < 0) else (post_norm[0] - pre_norm[0]) * 28.0
     flood_prior = (raw_delta_vv <= -3.2)
