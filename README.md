@@ -380,9 +380,9 @@ To ensure clear ownership, end-to-end execution, and seamless defense during hac
 │ • Q1: Where did the flood hit?  │   │ • Q2: What was damaged? (OSM)   │   │ • Output 1: Leaflet Dashboard   │
 │ • Sentinel-1 SAR & S2 Optical   │   │ • Q3: Who is cut off? (Routing) │   │ • Output 2: 1-Page SITREP UI    │
 │ • Orbit Track 121 Physics Guard │   │ • Zero-Hallucination Copilot    │   │ • Satellite Before/After Slider │
-│ • Siamese Change Network (PyTorch)│ │ • Sarvam AI Bilingual Engine    │   │ • Bilingual Localization (EN/NE)│
+│ • Siamese Change Network-PyTorch│   │ • Sarvam AI Bilingual Engine    │   │ • Bilingual Localization (EN/NE)│
 │ • Bonus: DEM Downstream Tracer  │   │ • Background Jobs & SQLite DB   │   │ • Leaflet Layer Controllers     │
-│ • Cloud Compute Optimization    │   │ • Vercel Backend Hosting        │   │ • Firebase Hosting & CDN Build  │
+│ • Web Hosting                   │   │ • Vercel Backend Hosting        │   │ • Report and Demo Video Work    │
 └─────────────────────────────────┘   └─────────────────────────────────┘   └─────────────────────────────────┘
 ```
 
@@ -433,8 +433,6 @@ To ensure clear ownership, end-to-end execution, and seamless defense during hac
   * `frontend/src/components/CopernicusEMSCompareView.jsx` & `frontend/src/components/Sentinel2BeforeAfterSection.jsx`: Side-by-side interactive swipe slider comparing co-registered Sentinel-2 true-color captures before and after the flood, plus Copernicus EMS catalogue viewer.
   * `frontend/src/data/translations.js`: Comprehensive English & Nepali translation dictionary supporting on-the-fly UI localization across all views.
   * Custom Apple iOS HIG circular map marker system (`createIcon`) with high-contrast accessibility badges.
-* **Viva / Presentation Talking Points**:
-  * *"How the map layers interact to give rescue coordinators an immediate operational picture, how the satellite swipe tool proves before-and-after flood impact, and how the SPA is optimized and hosted globally on Firebase CDN."*
 
 ---
 
