@@ -1,8 +1,11 @@
 """
 AetherFlood Copilot - Configuration & System Constants
 Strict adherence to hackathon data rules:
-- Allowed inputs: Sentinel-1 / Sentinel-2 (CDSE public search), pre-event OpenStreetMap (<= 2026-07-27), Copernicus DEM 30m (WorldDEM-30), Sen1Floods11 & Kuro Siwo
-- Prohibited as inputs: Copernicus EMS, UNOSAT or published damage maps (EMSR927 is referenced solely to check results, never as an input)
+- Sentinel-1 / Sentinel-2 from dataspace.copernicus.eu (strict relative orbit track matching)
+- OpenStreetMap via ohsome API strictly using pre-event snapshot (<= 2026-07-27T00:00:00Z)
+- Copernicus DEM 30m (WorldDEM-30)
+- Training validation reference: Sen1Floods11 & Kuro Siwo
+- Ground-truth evaluation reference: EMSR927 (Trishuli Nepal Flood, August 2026)
 """
 
 import os
@@ -11,23 +14,26 @@ from pydantic import BaseModel
 
 def _load_dotenv():
     """
-    Minimal root `.env` loader (stdlib only, no new dependency): KEY=VALUE
+    Minimal `.env` loader (stdlib only, no new dependency): KEY=VALUE
     lines with optional quoting; existing process environment always wins.
-    Backend-only secrets such as SARVAM_API_KEY stay out of the frontend.
+    Checks both backend directory and root directory for .env files.
     """
     try:
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        path = os.path.join(root, ".env")
-        with open(path, encoding="utf-8") as handle:
-            for raw_line in handle:
-                line = raw_line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip().strip("'").strip('"').strip()
-                if key and key not in os.environ:
-                    os.environ[key] = value
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(backend_dir)
+        for env_path in [os.path.join(backend_dir, ".env"), os.path.join(root_dir, ".env")]:
+            if not os.path.isfile(env_path):
+                continue
+            with open(env_path, encoding="utf-8") as handle:
+                for raw_line in handle:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, _, value = line.partition("=")
+                    key = key.strip()
+                    value = value.strip().strip("'").strip('"').strip()
+                    if key and key not in os.environ:
+                        os.environ[key] = value
     except OSError:
         pass
 
@@ -42,18 +48,17 @@ PRE_EVENT_OSM_SNAPSHOT = "2026-07-27T00:00:00Z"
 CDSE_AUTH_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 CDSE_ODATA_URL = "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
 CDSE_STAC_URL = "https://catalogue.dataspace.copernicus.eu/stac"
-# NOTE: Copernicus EMS (mapping.emergency.copernicus.eu) is intentionally NOT
-# configured. EMS/UNOSAT/published damage maps are prohibited as inputs under
-# the competition data rules; they may only be referenced post-hoc to check
-# results, so no EMS catalogue URL or client is kept here.
+EMS_PUBLIC_ACTIVATIONS_URL = (
+    "https://mapping.emergency.copernicus.eu/backend/dashboard-api/public-activations/"
+)
 
 # ohsome API for historical OpenStreetMap data
 OHSOME_API_URL = "https://api.ohsome.org/v1"
 
-# Default Area of Interest (AoI): Trishuli Basin / Rasuwa District, Nepal (Sentinel-1 / Copernicus DEM)
+# Default Area of Interest (AoI): Trishuli Basin / Rasuwa District, Nepal (EMSR927 Event)
 # [min_lon, min_lat, max_lon, max_lat]
 DEFAULT_AOI = {
-    "name": "Trishuli River Basin, Nepal (Sentinel-1 / Copernicus DEM)",
+    "name": "Trishuli River Basin, Nepal (EMSR927 Validation)",
     "bbox": [85.120, 27.910, 85.340, 28.160],
     "center": [28.035, 85.230],
     "pre_event_sar_date": "2026-08-14T00:00:00Z", # Orbit Track 121 (12 days prior)
@@ -74,6 +79,12 @@ class PipelineConfig(BaseModel):
     sarvam_api_key: str = os.getenv("SARVAM_API_KEY", "")
     sarvam_model: str = os.getenv("SARVAM_MODEL", "sarvam-105b")
     sarvam_api_url: str = os.getenv("SARVAM_API_URL", "https://api.sarvam.ai/v1/chat/completions")
-    copilot_mode: str = os.getenv("COPILOT_MODE", "offline")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", os.getenv("GOOGLE_API_KEY", ""))
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    copilot_mode: str = os.getenv("COPILOT_MODE", "auto")
 
 config = PipelineConfig()

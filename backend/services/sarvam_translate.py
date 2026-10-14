@@ -1,3 +1,15 @@
+"""
+Sarvam AI translation integration.
+
+Server-side only: the API key never leaves the backend (env SARVAM_API_KEY).
+Reuses the repository's configured endpoint and model
+(config.sarvam_api_url / config.sarvam_model) — no invented endpoints.
+
+Used to render grounded Copilot reports in Nepali (Devanagari). Translation
+must never change facts: the prompt pins number/date/coordinate/identifier
+preservation, and failures surface as explicit errors — never a silent
+English fallback and never another provider.
+"""
 
 from typing import Any, Dict, List, Optional
 import re

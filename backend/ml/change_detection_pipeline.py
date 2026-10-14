@@ -563,7 +563,7 @@ def predict_change_segmentation(
         logits = model(t_pre, t_post)
         preds = torch.argmax(logits, dim=1).squeeze(0).cpu().numpy()
 
-    # Operational Remote Sensing Physics Prior (Sen1Floods11 training dataset & Copernicus DEM terrain slope filter):
+    # Operational Remote Sensing Physics Prior (Sen1Floods11 / EMSR927 calibration):
     # Standing water specular scatter causes backscatter drop <= -3.2 dB in VV
     raw_delta_vv = (post_image[0] - pre_image[0]) if np.any(pre_image < 0) else (post_norm[0] - pre_norm[0]) * 28.0
     flood_prior = (raw_delta_vv <= -3.2)

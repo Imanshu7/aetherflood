@@ -4,41 +4,51 @@ Manages real persistent database records for:
 1. Spatial Incidents & Field Triage Dispatches with strict incident isolation:
    - Incident A: Nepal–Tibet Historical Flood (2026-08-26)
    - Incident B: Budhi Gandaki Developing Flood (2026-10-11)
-2. Satellite & Sensor Inputs (Historical Sentinel-1 Orbit 121, Sentinel-2 Optical, Copernicus DEM)
+2. Satellite Passes (Historical Sentinel-1 Orbit 121, Sentinel-2 Optical, EMSR927)
 3. Pipeline Telemetry Audit Logs
 """
 
 import sqlite3
 import os
+import shutil
 import datetime
 from typing import Dict, Any, List, Optional
 from backend.services.incident_data import INCIDENT_A, INCIDENT_B
 
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "aetherflood.db")
+_DEFAULT_DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "aetherflood.db"))
 
-def get_db_path() -> str:
-    """Return the active SQLite database path, copying to /tmp in Vercel serverless environments."""
-    if os.getenv("VERCEL"):
-        tmp_db = "/tmp/aetherflood.db"
-        if not os.path.exists(tmp_db) and os.path.exists(DEFAULT_DB_PATH):
-            try:
-                import shutil
-                shutil.copy2(DEFAULT_DB_PATH, tmp_db)
-            except Exception as e:
-                print(f"[WARN] Failed copying SQLite DB to /tmp: {e}")
-        return tmp_db
-    return DEFAULT_DB_PATH
+def _resolve_db_path() -> str:
+    """Resolve writable path for SQLite database, supporting Vercel/serverless environments."""
+    if os.getenv("AETHERFLOOD_DB_PATH"):
+        return os.getenv("AETHERFLOOD_DB_PATH")
 
-DB_PATH = get_db_path()
+    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+    db_dir = os.path.dirname(_DEFAULT_DB_PATH)
+    is_readonly = not os.access(db_dir, os.W_OK) if os.path.exists(db_dir) else True
+
+    if is_serverless or is_readonly:
+        tmp_db = os.path.join("/tmp", "aetherflood.db")
+        try:
+            if not os.path.exists(tmp_db) and os.path.exists(_DEFAULT_DB_PATH):
+                shutil.copy2(_DEFAULT_DB_PATH, tmp_db)
+            return tmp_db
+        except Exception:
+            pass
+    return _DEFAULT_DB_PATH
+
+DB_PATH = _resolve_db_path()
 
 class DatabaseService:
     def __init__(self):
-        active_path = get_db_path()
-        os.makedirs(os.path.dirname(active_path), exist_ok=True)
-        self.init_db()
+        try:
+            os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+            self.init_db()
+        except sqlite3.OperationalError:
+            # Existing initialized tables or read-only container
+            pass
 
     def get_connection(self):
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -275,12 +285,12 @@ class DatabaseService:
                         "Copernicus DEM (WorldDEM-30)",
                         "2026-08-26",
                         0,
-                        "Elevation & Slope (30m)",
+                        "Elevation Masking (30m)",
                         0.0,
                         0.0,
                         0.0,
-                        "TERRAIN_DEM_INPUT",
-                        "Copernicus 30m Global DEM raster input for physical slope conditioning (>18°)"
+                        "STATIC_TERRAIN_FILTER",
+                        "Copernicus DEM 30m terrain slope filter; slopes >15 deg masked for hydrologic flow routing"
                     )
                 ]
                 cursor.executemany("""
@@ -293,7 +303,7 @@ class DatabaseService:
             cursor.execute("SELECT COUNT(*) as count FROM pipeline_logs")
             if cursor.fetchone()["count"] == 0:
                 initial_logs = [
-                    ("2026-08-26 09:53:00 UTC", "COPERNICUS_DEM", "INFO", "Copernicus WorldDEM-30 30m terrain elevation raster ingested for hydraulic slope masking.", "COPERNICUS-DEM-30M"),
+                    ("2026-08-26 09:53:00 UTC", "COPERNICUS_EMS", "INFO", "EMSR927 Rapid Mapping activation logged for Rasuwa District (Syapru Besi AOI).", "EMSR927-ACTIVATION"),
                     ("2026-08-27 10:30:00 UTC", "SATELLITE_CATALOGUE", "INFO", "Co-registered Copernicus Sentinel-2 Betrawati/Gerkhu pair (12 Aug vs 27 Aug 2026).", "S2-BETRAWATI-PAIR"),
                     ("2026-08-27 12:00:00 UTC", "SATELLITE_CATALOGUE", "INFO", "Co-registered ESA/USGS Glacier headwaters SWIR pair (24 Aug S2 vs 26 Aug Landsat-9).", "ESA-GLACIER-SWIR"),
                     ("2026-10-11 11:30:00 NPT", "REPORT_INGESTION", "INFO", "Ingested ICIMOD preliminary report on Budhi Gandaki suspected landslide-dam breach.", "ICIMOD-2026-10-11"),

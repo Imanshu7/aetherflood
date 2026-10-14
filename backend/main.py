@@ -1,32 +1,35 @@
-"""AetherFlood API for source-linked incident monitoring and prototype workflows.
+"""AetherFlood API for Copernicus DEM terrain analysis, source reports, and prototype workflows."""
 
-Data rules (hackathon compliance):
-- Allowed inputs: Sentinel-1, Sentinel-2, Copernicus DEM, pre-event OpenStreetMap,
-  and the listed training datasets.
-- Prohibited as inputs: Copernicus EMS, UNOSAT or any other published damage maps,
-  and OpenStreetMap edits made after the event. These may only be referenced
-  after the fact to check results. This API exposes no EMS ingestion endpoint.
-"""
+import sys
+import os
+
+# Ensure backend package resolves whether running from project root or inside backend/ (Vercel)
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+_PARENT_DIR = os.path.dirname(_BACKEND_DIR)
+for _dir in [_PARENT_DIR, _BACKEND_DIR]:
+    if _dir not in sys.path:
+        sys.path.insert(0, _dir)
+
+if "backend" not in sys.modules:
+    import types
+    _pkg = types.ModuleType("backend")
+    _pkg.__path__ = [_BACKEND_DIR]
+    sys.modules["backend"] = _pkg
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any, List, Literal, Optional
-import sys
 import uvicorn
 import datetime
-import os
+import re
+import time
 import logging
 import requests
-from pathlib import Path
-
-# Ensure the repository root (parent of backend/) is in sys.path so 'backend' package imports resolve
-# whether executed from repo root or inside the backend service directory on Vercel.
-_repo_root = str(Path(__file__).resolve().parent.parent)
-if _repo_root not in sys.path:
-    sys.path.insert(0, _repo_root)
 
 from backend.config import PRE_EVENT_OSM_SNAPSHOT
+from backend.services.copernicus import copernicus_service
 from backend.services.incident_data import (
     get_canonical_incident,
     list_canonical_incidents
@@ -42,32 +45,29 @@ logger = logging.getLogger("aetherflood")
 
 app = FastAPI(
     title="AetherFlood Copilot API",
-    description=(
-        "Source-grounded incident monitoring and decision copilot. "
-        "Prohibited inputs (Copernicus EMS, UNOSAT, published damage maps, post-event "
-        "OSM edits) are never ingested; they may only be referenced post-hoc to check results."
-    ),
+    description="Copernicus DEM terrain analysis, source-grounded incident monitoring, and decision copilot.",
     version="1.0.0"
 )
 
-# CORS configuration: allows local dev, deployed Firebase origins, and any Vercel deployment domain.
+# CORS configuration supporting local dev, production hosting, and Vercel domains
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "AETHERFLOOD_ALLOWED_ORIGINS",
-        # Local Vite dev + preview, then deployed Firebase Hosting origins.
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:4173,http://127.0.0.1:4173,"
+        "http://localhost:3000,http://127.0.0.1:3000,"
         "https://aetherflood.web.app,https://aetherflood.firebaseapp.com",
     ).split(",")
     if origin.strip()
 ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
 )
 
@@ -120,16 +120,147 @@ def root():
         "limitations": [
             "No event-specific Sentinel scenes or DEM rasters are ingested.",
             "No validated damage or network-isolation measurements are connected.",
-            "Copernicus EMS, UNOSAT and other published damage maps are prohibited as "
-            "inputs under competition rules; they may only be referenced post-hoc to "
-            "check results, and no EMS ingestion endpoint exists here.",
+            "Source-linked incident reports and Copernicus DEM terrain services remain available.",
         ],
     }
 
-@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": "AetherFlood Copilot Engine"}
+
+# Brief in-memory cache for the unfiltered EMS catalogue list. The upstream
+# catalogue changes infrequently, and each uncached request fans out to many
+# paginated upstream pages (15+ seconds), so caching keeps the UI responsive.
+_EMS_CATALOGUE_TTL_S = 600.0
+_EMS_CATALOGUE_CACHE: Dict[str, Any] = {"expires": 0.0, "payload": None}
+
+
+def _get_cached_catalogue():
+    if time.monotonic() < _EMS_CATALOGUE_CACHE["expires"]:
+        return _EMS_CATALOGUE_CACHE["payload"]
+    return None
+
+
+def _set_cached_catalogue(records, total, complete, warning, retrieved_at):
+    _EMS_CATALOGUE_CACHE["payload"] = (records, total, complete, warning, retrieved_at)
+    _EMS_CATALOGUE_CACHE["expires"] = time.monotonic() + _EMS_CATALOGUE_TTL_S
+
+
+def _summarise_activations(records, total, complete, warning, retrieved_at):
+    activations = []
+    for record in records:
+        products = [
+            product
+            for area in record.get("aois", [])
+            for product in area.get("products", [])
+            if isinstance(product, dict)
+        ]
+        countries = [
+            country.get("name")
+            for country in record.get("countries", [])
+            if isinstance(country, dict) and country.get("name")
+        ]
+        activations.append({
+            "code": record.get("code"),
+            "name": record.get("name"),
+            "category": record.get("category"),
+            "subCategory": record.get("subCategory"),
+            "eventTime": record.get("eventTime"),
+            "activationTime": record.get("activationTime"),
+            "closed": record.get("closed"),
+            "countries": countries,
+            "reportLink": record.get("reportLink"),
+            "aoiCount": len(record.get("aois", [])),
+            "productCount": len(products),
+            "productTypes": sorted({
+                product["type"] for product in products if product.get("type")
+            }),
+        })
+
+    return {
+        "count": len(activations),
+        "total": total,
+        "activations": activations,
+        "complete": complete,
+        "warning": warning,
+        "retrievedAt": retrieved_at,
+    }
+
+
+@app.get("/api/copernicus/ems/activations")
+async def get_ems_activations(code: Optional[str] = Query(None)):
+    """
+    Proxy the public Copernicus EMS activation catalogue.
+    The upstream requires a `code` query parameter; an empty value requests the list.
+
+    Blocking upstream HTTP is executed in a worker thread so slow EMS responses
+    cannot stall the server event loop. Unfiltered list responses are cached
+    briefly (10 minutes) because the catalogue changes infrequently.
+    """
+    if code is not None and code and not re.fullmatch(r"EMSR\d+", code, flags=re.IGNORECASE):
+        raise HTTPException(status_code=422, detail="Activation code must match EMSR followed by digits.")
+
+    use_cache = not code
+    if use_cache:
+        cached = _get_cached_catalogue()
+        if cached is not None:
+            records, total, complete, warning, retrieved_at = cached
+            return _summarise_activations(records, total, complete, warning, retrieved_at)
+
+    try:
+        if code:
+            records = await run_in_threadpool(copernicus_service.get_ems_activation, code.upper())
+            total = len(records)
+            complete = True
+            warning = None
+            retrieved_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        else:
+            catalogue = await run_in_threadpool(copernicus_service.list_ems_activations)
+            records = catalogue["activations"]
+            total = catalogue["total"]
+            complete = catalogue["complete"]
+            warning = catalogue["warning"]
+            retrieved_at = catalogue["retrieved_at"]
+            _set_cached_catalogue(records, total, complete, warning, retrieved_at)
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Copernicus EMS request failed: {exc}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return _summarise_activations(records, total, complete, warning, retrieved_at)
+
+@app.get("/api/copernicus/ems/activations/{activation_code}")
+async def get_ems_activation_detail(activation_code: str):
+    """Return the complete public record, including AOIs, product metadata, and layers."""
+    if not re.fullmatch(r"EMSR\d+", activation_code, flags=re.IGNORECASE):
+        raise HTTPException(status_code=422, detail="Activation code must match EMSR followed by digits.")
+
+    try:
+        records = await run_in_threadpool(copernicus_service.get_ems_activation, activation_code.upper())
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Copernicus EMS request failed: {exc}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    matching_record = next(
+        (record for record in records if record.get("code", "").upper() == activation_code.upper()),
+        None,
+    )
+    if matching_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Copernicus EMS did not return a public activation for {activation_code.upper()}.",
+        )
+    return {
+        "activation": matching_record,
+        "retrievedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
 
 @app.post("/api/auth/register")
 def register_user(req: UserAuthRequest):
@@ -176,12 +307,8 @@ def get_system_summary():
         "status": "unavailable",
         "reason": "No validated Sentinel scenes, DEM rasters, or independent damage measurements are connected to the operational analysis workflow.",
         "active_incidents": [],
-        "prohibited_input_policy": (
-            "Copernicus EMS, UNOSAT and other published damage maps, and post-event "
-            "OpenStreetMap edits are prohibited as inputs. No EMS catalogue access or "
-            "EMS-derived product is exposed; such sources may only be referenced "
-            "post-hoc to check results."
-        ),
+        "copernicus_dem_service": "Copernicus DEM (WorldDEM-30) terrain slope and D8 flow routing connected.",
+        "post_hoc_validation_service": "Validation-only reference (EMSR927 post-hoc check); prohibited as operational input under competition rules.",
         "satellite_imagery_pairs_loaded": 0,
         "retrieved_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     }

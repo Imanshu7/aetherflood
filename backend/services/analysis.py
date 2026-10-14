@@ -3,10 +3,9 @@ Operational analysis input validation and pure geospatial helpers.
 
 Track B rules enforced here:
 - AOI must be a valid bbox or polygon (arbitrary user-selected areas allowed).
-- Allowed operational inputs: Sentinel-1, Sentinel-2, Copernicus DEM (WorldDEM-30), pre-event OSM.
 - Pre-event OSM snapshot must be <= PRE_EVENT_OSM_SNAPSHOT (2026-07-27).
 - Sentinel-1 same-orbit rule: identical relative orbit + direction required.
-- No Copernicus EMS / UNOSAT / published-damage / post-event-OSM inputs anywhere in this operational path.
+- No EMS/UNOSAT/published-damage/post-event-OSM inputs anywhere in this path.
 """
 
 import datetime

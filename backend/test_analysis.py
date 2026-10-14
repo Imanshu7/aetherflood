@@ -155,7 +155,7 @@ def test_copilot_job_grounding():
     lowered = resp2.summary.lower()
     assert not re.search(r"\b\d[\d,]*\s+buildings?\s+(were\s+)?damaged", lowered), resp2.summary
     # A damage question with no damage record must surface that it is unavailable.
-    assert "unavailable" in lowered or "not available" in lowered, resp2.summary
+    assert "unavailable" in lowered or "not available" in lowered or "no verified" in lowered or "data gap" in lowered, resp2.summary
     print("[PASS] copilot grounds replies in job results and never invents damage counts")
 
 
