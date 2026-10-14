@@ -1,6 +1,9 @@
 /**
- * Trishuli River Basin Geospatial Dataset (Rasuwa District, Nepal)
- * Strictly calibrated to EMSR927 Rapid Damage Assessment & Copernicus WorldDEM-30.
+ * Trishuli River Basin ILLUSTRATIVE prototype vectors (Rasuwa District, Nepal).
+ * Competition Data Rules:
+ *  - Allowed inputs: Sentinel-1, Sentinel-2, Copernicus DEM (WorldDEM-30), and pre-event OpenStreetMap (<= 2026-07-27).
+ *  - Prohibited inputs: Copernicus EMS, UNOSAT or published damage maps (only permitted post-hoc to verify results).
+ * Copernicus EMS activation EMSR927 is strictly a post-hoc verification reference and is never an operational input.
  * Coordinates are formatted as [latitude, longitude] for Leaflet.
  */
 
@@ -76,8 +79,8 @@ export const PRE_FLOOD_RIVER_THALWEG = [
   [27.915, 85.158]  // Bidur / Trishuli Hub
 ];
 
-// Sentinel-1 SAR Detected Inundation & Debris Corridor Polygon (14.82 km²)
-// Calibrated to match same-orbit Track #121 radar backscatter drop & Copernicus DEM slope <= 18°
+// Illustrative prototype inundation & debris envelope (14.82 km²).
+// Prototype vectors only — not a Sentinel-1 SAR retrieval and not DEM-masked.
 export const SAR_INUNDATION_POLYGON = [
   // West bank envelope
   [28.212, 85.375],
@@ -204,7 +207,7 @@ export const ROAD_NETWORK = [
   }
 ];
 
-// OpenStreetMap Pre-Event Building Footprints & Impact Clusters (Question 2: What was damaged?)
+// Illustrative prototype building clusters (seeded counts, not an OSM extract or detection output).
 export const DAMAGED_BUILDING_CLUSTERS = [
   {
     id: "bldg-cluster-ramche",
@@ -431,7 +434,7 @@ export const HOSPITALS = [
   }
 ];
 
-// Debris-Covered Areas & Landslide Scars (Mapped from Sentinel-1 radar backscatter & Sentinel-2 optical)
+// Illustrative prototype debris & landslide polygons (not mapped from live SAR/optical scenes).
 export const DEBRIS_ZONES = [
   {
     id: "debris-ramche",

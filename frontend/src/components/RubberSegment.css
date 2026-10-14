@@ -1,8 +1,8 @@
 .rubber-segment {
-  --rs-track: rgba(10, 34, 19, 0.08);
-  --rs-thumb: #ffffff;
-  --rs-ink: #264933;
-  --rs-ink-active: #0a2213;
+  --rs-track: #e6f0e8;
+  --rs-thumb: #0d2818;
+  --rs-ink: #1f422b;
+  --rs-ink-active: #ffffff;
   --rs-radius: 12px;
   --rs-inset: 3px;
   --rs-thumb-radius: 9px;
@@ -21,11 +21,11 @@
   vertical-align: middle;
   padding: var(--rs-inset);
   border-radius: var(--rs-radius);
+  /* Solid sage-green track: the active indicator is a solid dark green thumb,
+     so translucency/backdrop blur would only muddy the contrast. */
   background: var(--rs-track);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(30, 120, 62, 0.22);
+  box-shadow: 0 1px 3px rgba(10, 34, 19, 0.08);
   font-family: inherit;
   touch-action: pan-y;
   user-select: none;
@@ -77,6 +77,11 @@
   color: var(--rs-ink-active);
 }
 
+.rubber-segment__item:focus-visible {
+  outline: 2px solid #0d2818;
+  outline-offset: 2px;
+}
+
 .rubber-segment[data-draggable] .rubber-segment__item[aria-checked='true'] {
   cursor: grab;
 }
@@ -111,7 +116,7 @@
   background: var(--rs-thumb);
   color: var(--rs-ink-active);
   border-radius: var(--rs-thumb-radius);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 6px rgba(10, 34, 19, 0.28);
   pointer-events: none;
 }
 

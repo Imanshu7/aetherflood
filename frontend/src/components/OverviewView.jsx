@@ -1,67 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Radio, 
-  Satellite, 
-  Terminal, 
-  Layers, 
-  ShieldCheck, 
-  Cpu, 
-  RefreshCw, 
-  Database,
-  GitBranch,
-  Activity,
-  AlertTriangle,
-  Clock,
-  Compass
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import DevelopingIncidentSection from './DevelopingIncidentSection';
+import HistoricalIncidentSection from './HistoricalIncidentSection';
+import { TRANSLATIONS } from '../data/translations';
+import { Layers, Radio, Satellite } from 'lucide-react';
 
-export default function OverviewView({ lang = 'en' }) {
-  const [orbitData, setOrbitData] = useState(null);
-  const [pipelineLogs, setPipelineLogs] = useState([]);
-  const [sensorStatus, setSensorStatus] = useState(null);
-  const [metrics, setMetrics] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+const FILTER_OPTIONS = ['all', 'developing', 'historical'];
 
-  const fetchTelemetry = async () => {
-    setIsRefreshing(true);
-    try {
-      const [orbitRes, logsRes, sensorRes, metricsRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/telemetry/orbit').then(r => r.json()).catch(() => null),
-        fetch('http://127.0.0.1:8000/api/telemetry/pipeline-logs').then(r => r.json()).catch(() => []),
-        fetch('http://127.0.0.1:8000/api/sensor/status').then(r => r.json()).catch(() => null),
-        fetch('http://127.0.0.1:8000/api/metrics').then(r => r.json()).catch(() => null)
-      ]);
+// Pill switcher items: "all" stacks both incidents, the other two isolate one.
+// `dot` marks the developing incident as an ongoing (amber) event.
+const FILTER_ITEMS = [
+  { value: 'all', icon: Layers, dot: false },
+  { value: 'developing', icon: Radio, dot: true },
+  { value: 'historical', icon: Satellite, dot: false }
+];
 
-      if (orbitRes) setOrbitData(orbitRes);
-      if (Array.isArray(logsRes)) setPipelineLogs(logsRes);
-      if (sensorRes) setSensorStatus(sensorRes);
-      if (metricsRes) setMetrics(metricsRes);
-    } catch (e) {
-      console.warn("Telemetry loading error:", e);
-    } finally {
-      setIsRefreshing(false);
+// Where each pill scrolls to when selected. "all" starts at the top of the
+// developing incident (the newest-first stack begins there).
+const SECTION_TARGETS = {
+  all: 'overview-developing-section',
+  developing: 'overview-developing-section',
+  historical: 'overview-historical-section'
+};
+
+// Sticky offset: app top bar (~58px) plus the switcher bar and breathing room.
+const SCROLL_OFFSET = 150;
+
+export default function OverviewView({ onNavigateToCompare, onNavigateToIncidents, lang = 'en' }) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  // Which incident(s) the operator wants on screen. "all" keeps the original
+  // newest-first stack; the other two isolate a single incident for review.
+  const [filter, setFilter] = useState('all');
+  const activeFilter = FILTER_OPTIONS.includes(filter) ? filter : 'all';
+
+  const pillsTrackRef = useRef(null);
+  const pillRefs = useRef({});
+  // Geometry of the sliding capsule behind the active pill.
+  const [indicator, setIndicator] = useState(null);
+
+  const filterItems = FILTER_ITEMS.map(({ value, icon, dot }) => ({
+    value,
+    icon,
+    dot,
+    label: {
+      all: t.overview.filterAll,
+      developing: t.overview.filterDeveloping,
+      historical: t.overview.filterHistorical
+    }[value],
+    hint: {
+      all: t.overview.filterHintAll,
+      developing: t.overview.filterHintDeveloping,
+      historical: t.overview.filterHintHistorical
+    }[value]
+  }));
+
+  const filterStatus = {
+    all: t.overview.filterCountAll,
+    developing: t.overview.filterCountDeveloping,
+    historical: t.overview.filterCountHistorical
+  }[activeFilter];
+
+  // Keep the sliding indicator aligned with the active pill. Re-measured on
+  // resize and on container/font size changes so the capsule never drifts.
+  useEffect(() => {
+    const track = pillsTrackRef.current;
+    const activePill = pillRefs.current[activeFilter];
+    if (!track || !activePill) return undefined;
+
+    const update = () => {
+      setIndicator({ left: activePill.offsetLeft, width: activePill.offsetWidth });
+    };
+    update();
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(update);
+      observer.observe(track);
+      observer.observe(activePill);
     }
+    window.addEventListener('resize', update);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [activeFilter]);
+
+  // Scroll the active pill into view inside the (horizontally scrollable) pill
+  // track on small screens — without moving the page itself.
+  useEffect(() => {
+    const track = pillsTrackRef.current;
+    const activePill = pillRefs.current[activeFilter];
+    if (!track || !activePill || track.scrollWidth <= track.clientWidth) return;
+    track.scrollTo({
+      left: activePill.offsetLeft - (track.clientWidth - activePill.offsetWidth) / 2,
+      behavior: 'smooth'
+    });
+  }, [activeFilter]);
+
+  // Scroll the newly revealed section into view under the sticky chrome.
+  const scrollToSection = (value) => {
+    const section = document.getElementById(SECTION_TARGETS[value] || SECTION_TARGETS.all);
+    if (!section) return;
+    const top = section.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 15000); // 15s polling
-    return () => clearInterval(interval);
-  }, []);
+  const selectFilter = (value) => {
+    if (!FILTER_OPTIONS.includes(value)) return;
+    if (value === activeFilter) {
+      // Re-selecting the current pill re-centres its section.
+      scrollToSection(value);
+      return;
+    }
+    setFilter(value);
+    // Wait two frames so React has painted the newly mounted section (and the
+    // indicator has a fresh measurement) before scrolling to it.
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(value)));
+  };
+
+  // Roving arrow-key navigation, per the WAI-ARIA tabs pattern.
+  const handleFilterKeyDown = (event) => {
+    const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (!dir) return;
+    event.preventDefault();
+    const i = FILTER_OPTIONS.indexOf(activeFilter);
+    const next = FILTER_OPTIONS[(i + dir + FILTER_OPTIONS.length) % FILTER_OPTIONS.length];
+    selectFilter(next);
+    document.getElementById(`overview-filter-${next}`)?.focus();
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      
-      {/* Top Console Bar */}
-      <div style={{
+    <div className="overview-page">
+      <header className="overview-page-header">
+        <div>
+          <div className="overview-page-eyebrow">{t.overview.eyebrow}</div>
+          <h1>{t.overview.title}</h1>
+          <p>
+            {t.overview.description}
+          </p>
+        </div>
+        <div className="overview-page-scope" aria-label="Overview scope">
+          <span className="overview-page-scope-dot" aria-hidden="true" />
+          <span>{t.overview.scope}</span>
+        </div>
+      </header>
+
+      {/* Incident View Switcher — pill nav to choose which incident to review */}
+      <div
+        className="overview-view-filter"
+        role="tablist"
+        aria-label={t.overview.filterLabel}
+        onKeyDown={handleFilterKeyDown}
+      >
+        <span className="overview-view-filter-label" aria-hidden="true">
+          {t.overview.filterLabel}
+        </span>
+        <div className="overview-view-filter-pills" ref={pillsTrackRef}>
+          {/* Sliding capsule behind the active pill */}
+          <span
+            className={`overview-view-filter-indicator${indicator ? ' is-measured' : ''}`}
+            aria-hidden="true"
+            style={indicator
+              ? { transform: `translateX(${indicator.left}px)`, width: `${indicator.width}px` }
+              : undefined}
+          />
+          {filterItems.map(({ value, icon: Icon, dot, label, hint }) => {
+            const isActive = activeFilter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                id={`overview-filter-${value}`}
+                ref={(el) => { pillRefs.current[value] = el; }}
+                aria-selected={isActive}
+                aria-controls={
+                  value === 'developing' ? 'overview-developing-section'
+                    : value === 'historical' ? 'overview-historical-section'
+                      : undefined
+                }
+                tabIndex={isActive ? 0 : -1}
+                className={`overview-view-pill${isActive ? ' is-active' : ''}`}
+                title={hint}
+                onClick={() => selectFilter(value)}
+              >
+                <span className="overview-view-pill-icon" aria-hidden="true">
+                  {dot && <span className="overview-view-pill-dot" />}
+                  <Icon size={13} strokeWidth={2.4} />
+                </span>
+                <span className="overview-view-pill-label">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <span className="overview-view-filter-status" aria-live="polite">
+          {filterStatus}
+        </span>
+      </div>
+
+      {/* Incident Status Banner — only relevant when the developing incident is on screen */}
+      {activeFilter !== 'historical' && (
+      <div className="overview-status-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#f3f8f4',
         padding: '16px 22px',
-        borderRadius: '22px',
-        border: '1px solid rgba(10, 34, 19, 0.08)',
-        boxShadow: '0 4px 16px rgba(10, 34, 19, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+        borderRadius: '14px',
+        border: '1px solid #c7dccb',
+        boxShadow: '0 7px 20px rgba(24, 60, 43, 0.05)',
         flexWrap: 'wrap',
         gap: '12px'
       }}>
@@ -76,271 +222,68 @@ export default function OverviewView({ lang = 'en' }) {
             justifyContent: 'center',
             color: '#FFFFFF'
           }}>
-            <Database size={18} />
+            <Radio size={18} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.015em' }}>
-                PIPELINE & TELEMETRY
+                {t.overview.bannerTitle}
               </span>
               <span style={{
                 fontSize: '10px',
                 fontWeight: '600',
                 padding: '2px 8px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(30, 120, 62, 0.12)',
-                color: '#1e783e',
-                border: '1px solid rgba(30, 120, 62, 0.25)'
+                backgroundColor: 'rgba(255, 149, 0, 0.12)',
+                color: '#ff9500',
+                border: '1px solid rgba(255, 149, 0, 0.25)'
               }}>
-                LIVE STREAM
+                {t.overview.bannerEvent}
               </span>
             </div>
             <div style={{ fontSize: '11px', color: '#52735d', marginTop: '2px' }}>
-              SQLite Spatial Store · Sentinel-1 Track 121 · WorldDEM-30
+              {t.overview.bannerSub}
             </div>
           </div>
         </div>
 
-        <button 
-          onClick={fetchTelemetry}
-          className="btn-dark-green-pill"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', fontWeight: '600' }}
-          disabled={isRefreshing}
-        >
-          <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
-          <span>{isRefreshing ? 'Refreshing...' : 'Poll Live'}</span>
-        </button>
-      </div>
-
-      {/* Grid Row 1: Orbit Telemetry & Sensor Fusion */}
-      <div className="overview-grid">
-        
-        {/* Card 1: Sentinel-1A Orbital Mechanics */}
-        <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Satellite size={16} color="#1e783e" />
-              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>Radar Geometry</strong>
-            </div>
-            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
-              TRACK 121
-            </span>
-          </div>
-
-          <div className="overview-subgrid-2col" style={{ fontSize: '11.5px' }}>
-            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Relative Orbit Track</span>
-              <div style={{ fontWeight: '700', fontSize: '14px', color: '#0a2213', marginTop: '2px', letterSpacing: '-0.01em' }}>
-                Track #{orbitData ? orbitData.relative_orbit_track : 121}
-              </div>
-              <span style={{ color: '#1e783e', fontSize: '9.5px', fontWeight: '600' }}>12-day identical geometry verified</span>
-            </div>
-
-            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Radar Frequency / Band</span>
-              <div style={{ fontWeight: '700', fontSize: '14px', color: '#0a2213', marginTop: '2px', letterSpacing: '-0.01em' }}>
-                C-band (5.405 GHz)
-              </div>
-              <span style={{ color: '#1e783e', fontSize: '9.5px', fontWeight: '600' }}>100% Monsoon cloud penetration</span>
-            </div>
-
-            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Incidence Angle & Pass</span>
-              <div style={{ fontWeight: '600', fontSize: '12px', color: '#0a2213', marginTop: '2px' }}>
-                39.2° (Ascending)
-              </div>
-              <span style={{ color: '#52735d', fontSize: '9.5px' }}>Altitude: 693 km · Vel: 7.5 km/s</span>
-            </div>
-
-            <div style={{ backgroundColor: '#f2f7f4', padding: '12px', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d', fontSize: '10px', fontWeight: '500' }}>Pixel Spacing & Swath</span>
-              <div style={{ fontWeight: '600', fontSize: '12px', color: '#0a2213', marginTop: '2px' }}>
-                10m (IW Mode) · 250km
-              </div>
-              <span style={{ color: '#52735d', fontSize: '9.5px' }}>Dual-Pol (VV + VH co/cross)</span>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '12px', border: '1px solid rgba(10, 34, 19, 0.08)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
-            <strong style={{ fontWeight: '600' }}>Rule Compliance:</strong> Pre-disaster pass (2026-08-14) and post-flood pass (2026-08-26) were both captured on Orbit Track 121. Mismatched tracks cause false terrain shear in Himalayan topography.
-          </div>
-        </div>
-
-        {/* Card 2: Sentinel-2 L2A Change Detection through Time (Copernicus Browser) */}
-        <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Clock size={16} color="#1e783e" />
-              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>S2 L2A Change</strong>
-            </div>
-            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
-              CDSE TIME
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Temporal Baseline (T₁):</span>
-              <strong style={{ color: '#0a2213', fontWeight: '600' }}>2026-08-14 (Pre-Disaster)</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Disaster Acquisition (T₂):</span>
-              <strong style={{ color: '#ff3b30', fontWeight: '600' }}>2026-08-26 (Flood Peak)</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Flood Expansion (ΔNDWI):</span>
-              <strong style={{ color: '#1e783e', fontWeight: '600' }}>&gt; +0.25 (Cyan Surge)</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Vegetation Scour (ΔNDVI):</span>
-              <strong style={{ color: '#ea580c', fontWeight: '600' }}>&lt; -0.35 (Red Scars)</strong>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(30, 120, 62, 0.08)', borderRadius: '12px', border: '1px solid rgba(30, 120, 62, 0.2)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
-            <strong style={{ color: '#1e783e' }}>Copernicus Workflow:</strong> CDSE Change Detection through Time, comparing multi-spectral L2A surfaces across time.
-          </div>
-        </div>
-
-        {/* Card 3: Sensor Fusion & DEM Slope Filtering */}
-        <div className="grey-card" style={{ padding: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={16} color="#1e783e" />
-              <strong style={{ fontSize: '13px', color: '#0a2213', letterSpacing: '-0.01em' }}>Fusion Engine</strong>
-            </div>
-            <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
-              PHYSICS FILTER
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11.5px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>S2 Visibility:</span>
-              <strong style={{ color: '#1e783e', fontWeight: '600' }}>Lowlands Clear / Ridge Clouds</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Active Mode:</span>
-              <strong style={{ color: '#1e783e', fontWeight: '600' }}>Dual Fusion: S1 + S2</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>DEM 30m Slope Mask:</span>
-              <strong style={{ color: '#1e783e', fontWeight: '600' }}>≤ 18.0° Cutoff</strong>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: '#f2f7f4', borderRadius: '10px', border: '1px solid rgba(10, 34, 19, 0.06)' }}>
-              <span style={{ color: '#52735d' }}>Pre-Event OSM:</span>
-              <strong style={{ color: '#0a2213', fontWeight: '600' }}>ohsome API (≤ 2026-07-27)</strong>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'rgba(30, 120, 62, 0.08)', borderRadius: '12px', border: '1px solid rgba(30, 120, 62, 0.2)', fontSize: '11px', color: '#0a2213', lineHeight: '1.45' }}>
-            <strong style={{ color: '#1e783e' }}>Physical Constraint:</strong> Water cannot pool on mountain cliffs. 8.4 km² false radar shadows removed by DEM processor.
-          </div>
-        </div>
-
-      </div>
-
-      {/* Grid Row 2: Live Pipeline Audit Ledger & Stream */}
-      <div className="grey-card" style={{ padding: '18px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Terminal size={16} color="#1e783e" />
-            <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>Pipeline Audit Stream</strong>
-          </div>
-          <span style={{ fontSize: '11px', color: '#52735d' }}>
-            Table: <code style={{ backgroundColor: 'rgba(10, 34, 19, 0.06)', padding: '2px 6px', borderRadius: '4px', color: '#0a2213' }}>pipeline_logs</code> ({pipelineLogs.length} events)
-          </span>
-        </div>
-
-        <div style={{
-          backgroundColor: '#071a0e',
-          color: '#f5f5f7',
-          borderRadius: '14px',
-          border: '1px solid rgba(30, 120, 62, 0.35)',
-          padding: '14px 16px',
-          fontFamily: 'SF Mono, ui-monospace, Menlo, Monaco, monospace',
-          fontSize: '11.5px',
-          maxHeight: '260px',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '7px'
-        }}>
-          {pipelineLogs.map((log) => {
-            const isWarn = log.level === 'WARN';
-            const isErr = log.level === 'ERROR';
-            return (
-              <div key={log.id} style={{ display: 'flex', gap: '10px', lineHeight: '1.4' }}>
-                <span style={{ color: '#52735d', flexShrink: 0 }}>[{log.timestamp}]</span>
-                <span style={{
-                  color: isErr ? '#ff3b30' : (isWarn ? '#ff9500' : '#2da854'),
-                  fontWeight: '600',
-                  flexShrink: 0,
-                  width: '130px'
-                }}>
-                  {log.component}
-                </span>
-                <span style={{ flex: 1, color: '#f5f5f7' }}>{log.message}</span>
-                {log.proof_token && (
-                  <span style={{ color: '#2da854', fontSize: '10px', flexShrink: 0 }}>
-                    [{log.proof_token}]
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button 
+            type="button" 
+            onClick={onNavigateToIncidents}
+            className="btn-white-pill"
+            style={{ fontSize: '11px' }}
+          >
+            {t.overview.viewRegistry}
+          </button>
+          <button 
+            type="button" 
+            onClick={onNavigateToCompare}
+            className="btn-dark-green-pill"
+            style={{ fontSize: '11px' }}
+          >
+            {t.overview.compareHistorical}
+          </button>
         </div>
       </div>
+      )}
 
-      {/* Grid Row 3: Live Transport Graph & Network Statistics */}
-      <div className="overview-grid">
-        
-        <div className="grey-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <GitBranch size={16} color="#1e783e" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>TOPOLOGICAL NODES</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.02em' }}>
-            14 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#52735d' }}>nodes</span>
-          </div>
-          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
-            2 Hospitals, 3 Highway Junctions, 2 Bridges, 7 Settlements
-          </div>
+      {/* Primary Dedicated Developing Incident Experience */}
+      {activeFilter !== 'historical' && (
+        <div id="overview-developing-section" role="tabpanel" aria-labelledby="overview-filter-developing">
+          <DevelopingIncidentSection
+            onNavigateToCompare={onNavigateToCompare}
+            onNavigateToIncidents={onNavigateToIncidents}
+            lang={lang}
+          />
         </div>
+      )}
 
-        <div className="grey-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Activity size={16} color="#ff3b30" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>SEVERED EDGES</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#ff3b30', letterSpacing: '-0.02em' }}>
-            6 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#ff3b30' }}>cuts</span>
-          </div>
-          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
-            NH09 km 61, Mailung track, 4 bridge washouts
-          </div>
+      {activeFilter !== 'developing' && (
+        <div id="overview-historical-section" role="tabpanel" aria-labelledby="overview-filter-historical">
+          <HistoricalIncidentSection onNavigateToCompare={onNavigateToCompare} lang={lang} />
         </div>
-
-        <div className="grey-card" style={{ padding: '16px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <Compass size={16} color="#1e783e" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#52735d', letterSpacing: '0.02em' }}>DISCONNECTED SUBGRAPHS</span>
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#1e783e', letterSpacing: '-0.02em' }}>
-            4 <span style={{ fontSize: '12.5px', fontWeight: '400', color: '#1e783e' }}>clusters</span>
-          </div>
-          <div style={{ fontSize: '11px', color: '#52735d', marginTop: '4px' }}>
-            Dijkstra component analysis: 7,770 cut-off population
-          </div>
-        </div>
-
-      </div>
+      )}
 
     </div>
   );

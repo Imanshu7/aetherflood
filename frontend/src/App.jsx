@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardView from './components/DashboardView';
-import ImageComparisonView from './components/ImageComparisonView';
+import CompareView from './components/CompareView';
 import OverviewView from './components/OverviewView';
 import IncidentsView from './components/IncidentsView';
 import CopilotView from './components/CopilotView';
@@ -9,19 +9,47 @@ import AuthModal from './components/AuthModal';
 import RubberSegment from './components/RubberSegment';
 import { 
   Radio, 
-  Search, 
-  Mic,
   LogOut 
 } from 'lucide-react';
 
 import { TRANSLATIONS } from './data/translations';
+import { apiUrl } from './config';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
+  const readMapIncidentFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedView = params.get('view');
+    if ((requestedView && requestedView !== 'dashboard')
+      || (!params.has('incidentId') && (!params.has('lat') || !params.has('lon')))) {
+      return null;
+    }
+    const latValue = params.get('lat');
+    const lonValue = params.get('lon');
+    const lat = latValue === null || latValue.trim() === '' ? Number.NaN : Number(latValue);
+    const lon = lonValue === null || lonValue.trim() === '' ? Number.NaN : Number(lonValue);
+    return {
+      id: params.get('incidentId') || 'map-location',
+      title: params.get('title') || 'Selected incident',
+      location_name: params.get('location') || '',
+      timestamp: params.get('date') || '',
+      source_name: params.get('source') || '',
+      verification_state: params.get('verification') || '',
+      resolveCoordinates: !params.has('lat') || !params.has('lon'),
+      lat,
+      lon
+    };
+  };
+  const [currentView, setCurrentView] = useState(() => {
+    const requestedView = new URLSearchParams(window.location.search).get('view');
+    return ['dashboard', 'compare', 'overview', 'incidents', 'copilot', 'stats'].includes(requestedView)
+      ? requestedView
+      : 'dashboard';
+  });
+  const [mapIncident, setMapIncident] = useState(readMapIncidentFromUrl);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [benchmarkData, setBenchmarkData] = useState(null);
-  const [metrics, setMetrics] = useState(null);
-  const [viewMode, setViewMode] = useState('standard'); // 'standard' (Image 1) | 'focus' (Image 2)
+  const [viewMode, setViewMode] = useState(() =>
+    readMapIncidentFromUrl() ? 'focus' : 'standard'
+  );
   const [lang, setLang] = useState(() => {
     try {
       return localStorage.getItem('aetherflood_lang') || 'en';
@@ -67,41 +95,91 @@ export default function App() {
   const handleLogout = () => {
     try {
       localStorage.removeItem('aetherflood_user');
-    } catch (e) {}
+    } catch {}
     setCurrentUser(null);
     setIsAuthModalOpen(true);
   };
 
-  // Fetch benchmark & damage metrics from FastAPI backend
-  useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/benchmark/trishuli')
-      .then(res => res.json())
-      .then(data => {
-        setBenchmarkData(data);
-      })
-      .catch(err => {
-        console.warn('Backend benchmark loading fallback:', err);
-      });
+  const navigateToIncidentMap = (incident) => {
+    const params = new URLSearchParams({
+      view: 'dashboard',
+      incidentId: String(incident.id ?? ''),
+      title: String(incident.title ?? ''),
+      location: String(incident.location_name ?? ''),
+      date: String(incident.timestamp ?? ''),
+      source: String(incident.source_name ?? ''),
+      verification: String(incident.verification_state ?? ''),
+      lat: String(incident.lat ?? ''),
+      lon: String(incident.lon ?? '')
+    });
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    setMapIncident(incident);
+    setViewMode('focus');
+    setCurrentView('dashboard');
+  };
 
-    fetch('http://127.0.0.1:8000/api/metrics')
-      .then(res => res.json())
-      .then(data => {
-        setMetrics(data);
-      })
-      .catch(err => {
-        console.warn('Backend metrics loading fallback:', err);
-      });
+  const navigateToIncidents = () => {
+    window.history.pushState({}, '', `${window.location.pathname}?view=incidents`);
+    setCurrentView('incidents');
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedView = params.get('view');
+      setCurrentView(['dashboard', 'compare', 'overview', 'incidents', 'copilot', 'stats'].includes(requestedView)
+        ? requestedView
+        : 'dashboard');
+      const incident = readMapIncidentFromUrl();
+      setMapIncident(incident);
+      setViewMode(incident ? 'focus' : 'standard');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (!mapIncident?.resolveCoordinates || !mapIncident.id) return;
+    fetch(apiUrl('/api/incidents'))
+      .then((response) => {
+        if (!response.ok) throw new Error(`Incident lookup failed: HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((records) => {
+        if (!Array.isArray(records)) throw new Error('Incident lookup returned an invalid response');
+        const record = records.find((item) => String(item.id) === String(mapIncident.id));
+        if (!record) {
+          console.warn(`No incident record found for map link ${mapIncident.id}`);
+          return;
+        }
+        const params = new URLSearchParams({
+          view: 'dashboard',
+          incidentId: String(record.id),
+          title: String(record.title ?? ''),
+          location: String(record.location_name ?? ''),
+          date: String(record.timestamp ?? ''),
+          source: String(record.source_name ?? ''),
+          verification: String(record.verification_state ?? ''),
+          lat: String(record.lat ?? ''),
+          lon: String(record.lon ?? '')
+        });
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+        setMapIncident(record);
+      })
+      .catch((error) => {
+        console.warn(`Could not resolve coordinates for incident ${mapIncident.id}:`, error);
+      });
+  }, [mapIncident?.id]);
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   // Authentic Apple Tab Bar items (Matches Tab 1 ... Tab 5 in Image 1 & Image 2)
   const navSegments = [
-    { value: 'dashboard', label: 'Dashboard', title: `Dashboard: ${t.nav.dashboard}` },
-    { value: 'compare', label: 'Compare', title: `Compare: ${t.nav.compare}` },
-    { value: 'overview', label: 'Overview', title: `Overview: ${t.nav.overview}` },
-    { value: 'incidents', label: 'Incidents', title: `Incidents: ${t.nav.incidents}` },
-    { value: 'copilot', label: 'Copilot', title: `Copilot: ${t.nav.copilot}` }
+    { value: 'dashboard', label: t.nav.dashboard, title: `Dashboard: ${t.nav.dashboard}` },
+    { value: 'compare', label: t.nav.compare, title: `Compare: ${t.nav.compare}` },
+    { value: 'overview', label: t.nav.overview, title: `Overview: ${t.nav.overview}` },
+    { value: 'incidents', label: t.nav.incidents, title: `Incidents: ${t.nav.incidents}` },
+    { value: 'copilot', label: t.nav.copilot, title: `Copilot: ${t.nav.copilot}` }
   ];
 
   return (
@@ -118,7 +196,7 @@ export default function App() {
                   AETHERFLOOD
                 </div>
                 <div style={{ fontSize: '8.5px', fontWeight: '600', color: '#1e783e', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
-                  COPILOT // LIVE
+                  DISASTER INTELLIGENCE // PROTOTYPE
                 </div>
               </div>
             </div>
@@ -130,10 +208,10 @@ export default function App() {
               items={navSegments}
               value={currentView}
               onChange={(val) => setCurrentView(val)}
-              trackColor="rgba(255, 255, 255, 0.65)"
-              thumbColor="#ffffff"
+              trackColor="#e6f0e8"
+              thumbColor="#0d2818"
               textColor="#1f422b"
-              activeTextColor="#0a2213"
+              activeTextColor="#ffffff"
               size="md"
               radius={9999}
               inset={3}
@@ -146,18 +224,8 @@ export default function App() {
             />
           </div>
 
-          {/* Right: Search Box, Dark Pill Action, Language, Account Profile */}
+          {/* Right: Language and Account Profile */}
           <div className="top-bar-right">
-            {/* Apple Search Pill (with SF Search icon, Search input & Mic icon) */}
-            <div className="top-bar-search">
-              <Search size={13} color="#8e8e93" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-              />
-              <Mic size={13} color="#8e8e93" style={{ cursor: 'pointer', flexShrink: 0 }} title="Voice dictation input" />
-            </div>
-
                   {/* Global Language Switcher */}
                   <div style={{
                     display: 'flex',
@@ -272,21 +340,33 @@ export default function App() {
               <main className="page-container">
                 {currentView === 'dashboard' && (
                   <DashboardView 
-                    benchmarkData={benchmarkData} 
-                    metrics={metrics} 
                     viewMode={viewMode}
                     onToggleViewMode={() => setViewMode(v => v === 'standard' ? 'focus' : 'standard')}
                     onNavigateToCompare={() => setCurrentView('compare')}
                     onNavigateToCopilot={() => setCurrentView('copilot')}
+                    onNavigateToIncidents={navigateToIncidents}
+                    focusedIncident={mapIncident}
+                    onClearIncidentFocus={() => {
+                      setMapIncident(null);
+                      setViewMode('standard');
+                      window.history.pushState({}, '', `${window.location.pathname}?view=dashboard`);
+                    }}
+                    lang={lang}
+                  />
+                )}
+                {currentView === 'compare' && <CompareView />}
+                {currentView === 'overview' && (
+                  <OverviewView
+                    onNavigateToCompare={() => setCurrentView('compare')}
                     onNavigateToIncidents={() => setCurrentView('incidents')}
                     lang={lang}
                   />
                 )}
-                {currentView === 'compare' && <ImageComparisonView lang={lang} />}
-                {currentView === 'overview' && <OverviewView lang={lang} />}
-                {currentView === 'incidents' && <IncidentsView lang={lang} />}
+                {currentView === 'incidents' && (
+                  <IncidentsView onNavigateToMap={navigateToIncidentMap} lang={lang} />
+                )}
                 {currentView === 'copilot' && <CopilotView currentUser={currentUser} lang={lang} onLanguageChange={handleLanguageChange} />}
-                {currentView === 'stats' && <SituationStatsView currentUser={currentUser} metrics={metrics} lang={lang} />}
+                {currentView === 'stats' && <SituationStatsView />}
               </main>
             </div>
 

@@ -2,18 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart2, 
   Satellite, 
-  ShieldCheck, 
-  Layers, 
   Compass, 
-  Activity, 
-  CheckCircle2, 
   RefreshCw,
-  GitCommit,
   TrendingUp,
   FileCheck
 } from 'lucide-react';
+import { apiUrl } from '../config';
 
-export default function SituationStatsView({ currentUser, metrics: propMetrics, lang = 'en' }) {
+export default function SituationStatsView() {
   const [passes, setPasses] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,11 +18,11 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
     setIsLoading(true);
     try {
       const [passesRes, metricsRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/telemetry/passes').then(r => r.json()).catch(() => []),
-        fetch('http://127.0.0.1:8000/api/metrics').then(r => r.json()).catch(() => null)
+        fetch(apiUrl('/api/telemetry/passes')).then(r => r.json()).catch(() => []),
+        fetch(apiUrl('/api/metrics')).then(r => r.json()).catch(() => null)
       ]);
-      if (Array.isArray(passesRes)) setPasses(passesRes);
-      if (metricsRes) setMetrics(metricsRes);
+      if (Array.isArray(passesRes?.passes)) setPasses(passesRes.passes);
+      if (metricsRes?.status === 'available') setMetrics(metricsRes);
     } catch (e) {
       console.warn("Failed loading stats telemetry:", e);
     } finally {
@@ -81,13 +77,17 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
                 color: '#1e783e',
                 border: '1px solid rgba(30, 120, 62, 0.25)'
               }}>
-                TRACK 121
+                NOT CONNECTED
               </span>
             </div>
             <div style={{ fontSize: '11px', color: '#52735d', marginTop: '2px' }}>
-              Sentinel-1 SAR vs Pre-Disaster Baseline vs EMSR927 Rapid Mapping
+              No validated pass catalogue or event-specific analysis is connected
             </div>
           </div>
+        </div>
+
+        <div role="note" style={{ padding: '12px 16px', background: '#f2f7f4', border: '1px solid rgba(30, 120, 62, 0.25)', color: '#0a2213', fontSize: '12px', lineHeight: 1.5, borderRadius: '12px' }}>
+          <strong>Data Rules Adherence:</strong> Allowed inputs are Sentinel-1, Sentinel-2, Copernicus DEM (WorldDEM-30), and pre-event OSM (&le; 2026-07-27). Copernicus EMS (EMSR927) is strictly not an operational input and may only be used post-hoc to verify results.
         </div>
 
         <button 
@@ -107,11 +107,11 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Satellite size={16} color="#1e783e" />
             <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>
-              Sentinel-1 Passes (Trishuli AOI)
+              Sentinel-1 Passes & Copernicus DEM Input (Trishuli AOI)
             </strong>
           </div>
           <span style={{ fontSize: '10.5px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
-            Database Table: <code style={{ backgroundColor: 'rgba(10, 34, 19, 0.06)', padding: '1px 5px', borderRadius: '4px', color: '#0a2213' }}>satellite_passes</code>
+            Acquisition source unavailable
           </span>
         </div>
 
@@ -131,9 +131,16 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
               </tr>
             </thead>
             <tbody>
+              {passes.length === 0 && (
+                <tr>
+                  <td colSpan="9" style={{ padding: '18px 12px', color: '#52735d' }}>
+                    No verified satellite acquisitions are connected to this view.
+                  </td>
+                </tr>
+              )}
               {passes.map((p) => {
                 const isPost = p.id === 'PASS-03';
-                const isBenchmark = p.id === 'PASS-05';
+                const isDem = p.id === 'PASS-05';
                 const isObscured = p.id === 'PASS-04';
 
                 return (
@@ -141,7 +148,7 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
                     key={p.id} 
                     style={{ 
                       borderBottom: '1px solid rgba(10, 34, 19, 0.06)',
-                      backgroundColor: isPost ? 'rgba(255, 59, 48, 0.04)' : (isBenchmark ? 'rgba(52, 199, 89, 0.05)' : (isObscured ? '#f6faf7' : '#FFFFFF'))
+                      backgroundColor: isPost ? 'rgba(255, 59, 48, 0.04)' : (isDem ? 'rgba(30, 120, 62, 0.05)' : (isObscured ? '#f6faf7' : '#FFFFFF'))
                     }}
                   >
                     <td style={{ padding: '10px 12px', fontWeight: '700', color: '#0a2213' }}>{p.id}</td>
@@ -151,12 +158,12 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
                       {p.orbit_track > 0 ? (
                         <span style={{ color: '#1e783e', fontWeight: '600' }}>Track #{p.orbit_track}</span>
                       ) : (
-                        <span style={{ color: '#52735d' }}>Optical N/A</span>
+                        <span style={{ color: '#52735d' }}>Optical / DEM N/A</span>
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', color: '#52735d' }}>{p.polarization}</td>
                     <td style={{ padding: '10px 12px', fontWeight: '600', color: p.mean_backscatter_db < -15 ? '#ff3b30' : '#0a2213' }}>
-                      {p.mean_backscatter_db !== 0.0 ? `${p.mean_backscatter_db} dB` : 'N/A (Optical)'}
+                      {p.mean_backscatter_db !== 0.0 ? `${p.mean_backscatter_db} dB` : 'N/A (Optical/DEM)'}
                     </td>
                     <td style={{ padding: '10px 12px', fontWeight: '700', color: p.water_extent_km2 > 10 ? '#ff3b30' : '#1e783e' }}>
                       {p.water_extent_km2 > 0 ? `${p.water_extent_km2} km²` : 'Obscured'}
@@ -172,9 +179,9 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
                         fontWeight: '600',
                         padding: '2px 8px',
                         borderRadius: '9999px',
-                        backgroundColor: isPost ? 'rgba(255, 59, 48, 0.1)' : (isBenchmark ? 'rgba(30, 120, 62, 0.12)' : '#f2f7f4'),
-                        color: isPost ? '#ff3b30' : (isBenchmark ? '#1e783e' : '#52735d'),
-                        border: isPost ? '1px solid rgba(255, 59, 48, 0.2)' : (isBenchmark ? '1px solid rgba(30, 120, 62, 0.25)' : '1px solid rgba(10, 34, 19, 0.08)')
+                        backgroundColor: isPost ? 'rgba(255, 59, 48, 0.1)' : (isDem ? 'rgba(30, 120, 62, 0.12)' : '#f2f7f4'),
+                        color: isPost ? '#ff3b30' : (isDem ? '#1e783e' : '#52735d'),
+                        border: isPost ? '1px solid rgba(255, 59, 48, 0.2)' : (isDem ? '1px solid rgba(30, 120, 62, 0.25)' : '1px solid rgba(10, 34, 19, 0.08)')
                       }}>
                         {p.status}
                       </span>
@@ -193,11 +200,11 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <TrendingUp size={16} color="#1e783e" />
             <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>
-              EMSR927 Concordance Matrix
+              EMSR927 Verification Reference (Post-Hoc Check Only — Not An Input)
             </strong>
           </div>
           <span style={{ fontSize: '10.5px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
-            98.1% F1 OVERLAP
+            Not computed
           </span>
         </div>
 
@@ -213,50 +220,10 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
               </tr>
             </thead>
             <tbody>
-              <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
-                <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0a2213' }}>Inundation & Debris Extent</td>
-                <td style={{ padding: '10px 12px', color: '#52735d' }}>3.25 km² (Normal Riverbed)</td>
-                <td style={{ padding: '10px 12px', color: '#ff3b30', fontWeight: '700' }}>
-                  {metrics ? `${metrics.inundation_area_km2} km²` : '14.82 km²'}
-                </td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '600' }}>15.10 km²</td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '700' }}>98.1% F1 Score</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
-                <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0a2213' }}>Damaged Buildings (OSM Overlaid)</td>
-                <td style={{ padding: '10px 12px', color: '#52735d' }}>0 structures</td>
-                <td style={{ padding: '10px 12px', color: '#ff3b30', fontWeight: '700' }}>
-                  {metrics ? `${metrics.damaged_buildings_count} structures` : '342 structures'}
-                </td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '600' }}>358 structures</td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '700' }}>95.5% Precision</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
-                <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0a2213' }}>Submerged Roadways (Total)</td>
-                <td style={{ padding: '10px 12px', color: '#52735d' }}>0.00 km (100% Passable)</td>
-                <td style={{ padding: '10px 12px', color: '#ff3b30', fontWeight: '700' }}>
-                  {metrics ? `${metrics.submerged_roads_km} km` : '18.65 km'}
-                </td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '600' }}>19.20 km</td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '700' }}>97.1% Recall</td>
-              </tr>
-              <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
-                <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0a2213' }}>Severed Bridge Crossings</td>
-                <td style={{ padding: '10px 12px', color: '#52735d' }}>0 severed (Intact)</td>
-                <td style={{ padding: '10px 12px', color: '#ff3b30', fontWeight: '700' }}>
-                  {metrics ? `${metrics.severed_bridges_count} crossings` : '4 crossings'}
-                </td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '600' }}>4 crossings</td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '700' }}>100.0% Exact Match</td>
-              </tr>
               <tr>
-                <td style={{ padding: '10px 12px', fontWeight: '600', color: '#0a2213' }}>Cut-Off Settlements (NetworkX)</td>
-                <td style={{ padding: '10px 12px', color: '#52735d' }}>0 isolated (All connected)</td>
-                <td style={{ padding: '10px 12px', color: '#ff3b30', fontWeight: '700' }}>
-                  4 settlements (7,770 pop)
+                <td colSpan="5" style={{ padding: '18px 12px', color: '#52735d' }}>
+                  Not computed — co-registered analysis rasters and a documented EMSR927 comparison are not available.
                 </td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '600' }}>4 settlements</td>
-                <td style={{ padding: '10px 12px', color: '#1e783e', fontWeight: '700' }}>100.0% Topological Match</td>
               </tr>
             </tbody>
           </table>
@@ -327,7 +294,7 @@ export default function SituationStatsView({ currentUser, metrics: propMetrics, 
           <span>STATISTICAL INTEGRITY & REPRODUCIBILITY PROOF</span>
         </div>
         <div style={{ lineHeight: '1.45' }}>
-          Every statistical metric above is derived from verified Copernicus Sentinel-1A Level-1 Ground Range Detected (GRD) imagery coregistered with Copernicus WorldDEM-30 elevation models and pre-disaster OpenStreetMap vectors (&le; 2026-07-27 via ohsome API). No metrics were hallucinated or interpolated from demo placeholders.
+          Event-specific Sentinel scenes, a DEM raster, dated OSM data, and independent change-detection outputs are not connected. No damage measurements or validation scores are reported here.
         </div>
       </div>
 

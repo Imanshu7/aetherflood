@@ -1,43 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, Tooltip, ImageOverlay, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   AlertTriangle, 
   Layers, 
   Play, 
   Pause,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
   Sparkles,
-  Sun,
-  Radio,
-  CheckCircle2, 
-  Activity, 
-  TrendingUp, 
-  MapPin, 
   Navigation, 
   ShieldCheck, 
-  Building2, 
   FileCheck, 
   Compass, 
-  Clock, 
   Info, 
-  ExternalLink, 
   X, 
-  FileText, 
-  SplitSquareVertical,
-  Sliders,
-  Maximize2,
   Crosshair,
-  Home,
-  Check,
-  PhoneCall
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { 
   BASEMAP_PROVIDERS, 
   TRISHULI_AOI, 
-  PRE_FLOOD_RIVER_THALWEG, 
+  PRE_FLOOD_RIVER_THALWEG,
   SAR_INUNDATION_POLYGON, 
   ROAD_NETWORK, 
   DAMAGED_BUILDING_CLUSTERS, 
@@ -80,6 +64,9 @@ const intactBridgeIcon = createIcon('#1e783e', 'OK', '#FFFFFF', 22);
 const buildingIcon = createIcon('#ff9500', 'B', '#FFFFFF', 20);
 const upstreamIcon = createIcon('#1e783e', 'U', '#FFFFFF', 26);
 
+import MapScrollZoomController from './MapScrollZoomController';
+import { apiUrl } from '../config';
+
 // Helper component to recenter map and resize on layout change
 function MapRecenterController({ center, zoom, viewMode }) {
   const map = useMap();
@@ -91,8 +78,36 @@ function MapRecenterController({ center, zoom, viewMode }) {
       map.invalidateSize();
     }, 200);
     return () => clearTimeout(timer);
-  }, [center, zoom, viewMode, map]);
+  }, [center?.[0], center?.[1], zoom, viewMode, map]);
   return null;
+}
+
+function IncidentFocusMarker({ incident, position }) {
+  const markerRef = useRef(null);
+  const icon = createIcon('#b42318', '!', '#FFFFFF', 30);
+
+  useEffect(() => {
+    markerRef.current?.openPopup();
+  }, [incident.id]);
+
+  return (
+    <Marker ref={markerRef} position={position} icon={icon} zIndexOffset={1000}>
+      <Popup>
+        <strong>{incident.title || 'Selected incident'}</strong><br />
+        Incident ID: {incident.id || 'Not provided'}<br />
+        Location: {incident.location_name || 'Not provided'}<br />
+        Event date: {incident.timestamp || 'Not provided'}<br />
+        Source: {incident.source_name || 'Not provided'}<br />
+        Verification: {incident.verification_state || incident.status || 'Not provided'}
+      </Popup>
+    </Marker>
+  );
+}
+
+function parseCoordinate(value) {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string' || value.trim() === '') return Number.NaN;
+  return Number(value);
 }
 
 // Custom Floating Stepper Component (Matching Figma Stepper Layer)
@@ -122,24 +137,21 @@ function CustomMapStepper() {
 }
 
 export default function DashboardView({ 
-  benchmarkData, 
-  metrics, 
   viewMode = 'standard',
   onToggleViewMode,
-  onRunCustomAnalysis, 
-  onNavigateToCompare, 
-  onNavigateToCopilot, 
-  onNavigateToIncidents, 
+  onNavigateToCopilot,
+  onNavigateToIncidents,
+  focusedIncident,
+  onClearIncidentFocus,
   lang = 'en' 
 }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   const [baseMapKey, setBaseMapKey] = useState('satellite'); // Default to high-res satellite basemap
   const [inundationOpacity, setInundationOpacity] = useState(0.65);
-  // Satellite scene mode: 'optical_change' (Copernicus S2 Change through Time) | 'optical' | 'fusion' | 'sar' | 'change' | 'none'
-  const [disasterSceneType, setDisasterSceneType] = useState('optical_change');
-  
-  // Sentinel-2 Change Detection through Time State (Copernicus Browser L2A workflow)
-  const [temporalStep, setTemporalStep] = useState('change'); // 'pre' (2026-08-14) | 'post' (2026-08-26) | 'change' (ΔT Map)
+
+  // Illustrative scenario step for the prototype vector layers only.
+  // No satellite change-detection pipeline is connected (see banner above).
+  const [temporalStep, setTemporalStep] = useState('change'); // 'pre' | 'post' | 'change' (illustrative vector styling)
   const [isPlayingTimeline, setIsPlayingTimeline] = useState(false);
 
   // Auto-play time-lapse progression through the disaster timeline
@@ -151,8 +163,34 @@ export default function DashboardView({
     return () => clearInterval(timer);
   }, [isPlayingTimeline]);
 
+  const handlePrevStep = () => {
+    setIsPlayingTimeline(false);
+    setTemporalStep(prev => {
+      if (prev === 'change') return 'post';
+      if (prev === 'post') return 'pre';
+      return 'change';
+    });
+  };
+
+  const handleNextStep = () => {
+    setIsPlayingTimeline(false);
+    setTemporalStep(prev => {
+      if (prev === 'pre') return 'post';
+      if (prev === 'post') return 'change';
+      return 'pre';
+    });
+  };
+
+  const handleSelectStep = (step) => {
+    setIsPlayingTimeline(false);
+    setTemporalStep(step);
+  };
+
+  const handleToggleTimelapse = () => {
+    setIsPlayingTimeline(prev => !prev);
+  };
+
   const [activeLayers, setActiveLayers] = useState({
-    satelliteDisasterScene: true,
     flood: true,
     debris: true,
     river: true,
@@ -164,66 +202,26 @@ export default function DashboardView({
     bonusPath: true
   });
 
-  const handleSelectAllLayers = () => {
-    setActiveLayers({
-      satelliteDisasterScene: true,
-      flood: true,
-      debris: true,
-      river: true,
-      roads: true,
-      buildings: true,
-      settlements: true,
-      bridges: true,
-      hospitals: true,
-      bonusPath: true
-    });
-  };
-
-  const handleDeselectAllLayers = () => {
-    setActiveLayers({
-      satelliteDisasterScene: false,
-      flood: false,
-      debris: false,
-      river: false,
-      roads: false,
-      buildings: false,
-      settlements: false,
-      bridges: false,
-      hospitals: false,
-      bonusPath: false
-    });
-  };
-
   const toggleLayer = (key) => {
     setActiveLayers(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const [judgeInputs, setJudgeInputs] = useState({
-    aoi: 'Trishuli Basin (EMSR927)',
-    minLon: 85.120,
-    minLat: 27.910,
-    maxLon: 85.340,
-    maxLat: 28.160,
-    eventDate: '2026-08-26',
-    preOrbit: 121,
-    postOrbit: 121,
-    osmSnapshot: '2026-07-27'
-  });
-
-  const [isRunning, setIsRunning] = useState(false);
-  const [pipelineLogs, setPipelineLogs] = useState([]);
   const [showLimitationsModal, setShowLimitationsModal] = useState(false);
   const [showEMSR927Compare, setShowEMSR927Compare] = useState(false);
   const [showMapSourcesModal, setShowMapSourcesModal] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(null);
-  const [activeQuickPrompt, setActiveQuickPrompt] = useState('hospital');
-  const [showJudgesTestAccordion, setShowJudgesTestAccordion] = useState(false);
-  const [showDetailedLayersAccordion, setShowDetailedLayersAccordion] = useState(false);
+  const [scrollZoomEnabled, setScrollZoomEnabled] = useState(false);
 
   // Bonus Upstream Flood Path State
   const [upstreamPreset, setUpstreamPreset] = useState('langtang');
   const [bonusPathData, setBonusPathData] = useState(null);
-  const [isTracingBonus, setIsTracingBonus] = useState(false);
+  const [bonusTraceUnavailable, setBonusTraceUnavailable] = useState(false);
+  const focusLat = parseCoordinate(focusedIncident?.lat);
+  const focusLon = parseCoordinate(focusedIncident?.lon);
+  const hasValidIncidentCoordinates = Number.isFinite(focusLat) && focusLat >= -90 && focusLat <= 90
+    && Number.isFinite(focusLon) && focusLon >= -180 && focusLon <= 180;
+  const focusCenter = hasValidIncidentCoordinates ? [focusLat, focusLon] : TRISHULI_AOI.center;
+  const focusZoom = hasValidIncidentCoordinates ? 14 : TRISHULI_AOI.defaultZoom;
 
   const upstreamPresets = {
     langtang: { lat: 28.210, lon: 85.380, name: "Langtang Upper Catchment (1,950m)" },
@@ -232,35 +230,20 @@ export default function DashboardView({
   };
 
   const fetchBonusTrace = async (lat, lon) => {
-    setIsTracingBonus(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/bonus/trace-flood-path?lat=${lat}&lon=${lon}`);
-      const data = await res.json();
-      setBonusPathData(data);
+      const res = await fetch(apiUrl(`/api/bonus/trace-flood-path?lat=${lat}&lon=${lon}`));
+      if (!res.ok) {
+        setBonusPathData(null);
+        setBonusTraceUnavailable(true);
+        return;
+      }
+      setBonusPathData(await res.json());
+      setBonusTraceUnavailable(false);
     } catch (e) {
-      console.warn("Using fallback bonus trace data:", e);
-      setBonusPathData({
-        status: "SUCCESS",
-        upstream_origin: {
-          input_lat: lat,
-          input_lon: lon,
-          starting_zone: "Langtang Upper Catchment",
-          origin_elevation_m: 1950
-        },
-        path_coordinates: PRE_FLOOD_RIVER_THALWEG,
-        total_downstream_length_km: 34.2,
-        total_elevation_drop_m: 1410,
-        valley_gradient_pct: 4.12,
-        threatened_settlements: [
-          { name: "Syaphrubesi", lat: 28.156, lon: 85.334, elevation_m: 1420, population: 2180, distance_downstream_km: 7.4, estimated_arrival_lead_time_min: 27, threat_level: "CRITICAL" },
-          { name: "Mailung", lat: 28.112, lon: 85.289, elevation_m: 1180, population: 890, distance_downstream_km: 14.1, estimated_arrival_lead_time_min: 52, threat_level: "CRITICAL" },
-          { name: "Ramche", lat: 28.062, lon: 85.241, elevation_m: 940, population: 1420, distance_downstream_km: 21.3, estimated_arrival_lead_time_min: 79, threat_level: "HIGH" },
-          { name: "Betrawati", lat: 27.978, lon: 85.184, elevation_m: 680, population: 3450, distance_downstream_km: 29.8, estimated_arrival_lead_time_min: 110, threat_level: "HIGH" }
-        ],
-        downstream_terminus: "Trishuli District Hospital (Bidur)"
-      });
+      console.warn("Upstream tracing request failed:", e);
+      setBonusPathData(null);
+      setBonusTraceUnavailable(true);
     } finally {
-      setIsTracingBonus(false);
     }
   };
 
@@ -269,39 +252,14 @@ export default function DashboardView({
     fetchBonusTrace(defaultCoords.lat, defaultCoords.lon);
   }, [upstreamPreset]);
 
-  const handleLiveAnalysis = async () => {
-    setIsRunning(true);
-    setPipelineLogs([
-      "Validating Sentinel-1 orbits: Pre-event Track #121 vs Post-event Track #121... MATCH CONFIRMED.",
-      "Enforcing Data Rule: Prohibited inputs (Copernicus EMS / UNOSAT / post-flood OSM) excluded from inference.",
-      "Querying ohsome API (api.ohsome.org/v1) baseline: timestamp=2026-07-27T00:00:00Z... 342 buildings loaded.",
-      "Filtering Copernicus DEM 30m terrain slope <= 18 degrees... False flood reflections discarded.",
-      "Running NetworkX topological severance... Ramche & Syaphrubesi cut off from Trishuli Base Hospital."
-    ]);
-
-    try {
-      const res = await fetch('http://127.0.0.1:8000/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(judgeInputs)
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        setPipelineLogs(prev => [...prev, `Pipeline completed in ${data.pipeline_telemetry.execution_duration_sec}s. Inundation: ${data.analysis_result.inundation_area_km2} km²`]);
-      } else {
-        setPipelineLogs(prev => [...prev, `Rule Violation: ${data.message}`]);
-      }
-    } catch (e) {
-      setPipelineLogs(prev => [...prev, "Offline benchmark fallback active (All hackathon rules verified)."]);
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
   const currentBasemap = BASEMAP_PROVIDERS[baseMapKey] || BASEMAP_PROVIDERS.satellite;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+      <div role="note" style={{ padding: '12px 16px', background: '#fff8e7', border: '1px solid #e6c87a', color: '#624b12', fontSize: '12px', lineHeight: 1.5 }}>
+        <strong>Illustrative demo only.</strong> Dashboard impact figures, marker locations, flood/debris overlays, satellite-pass rows, and route analysis are seeded prototype content—not measurements from validated event imagery or field reports. Do not use them for operational decisions. Verified EMS products and date-attributed regional imagery are available in Compare.
+        {bonusTraceUnavailable && <div>DEM-based upstream tracing is unavailable because no elevation raster or hydrologic network is connected.</div>}
+      </div>
       <div className={`figma-layout-container ${viewMode === 'focus' ? 'focus-mode' : ''}`}>
       
       {/* =========================================================================
@@ -317,7 +275,7 @@ export default function DashboardView({
               <div className="figma-kpi-header">
                 <span className="figma-kpi-tag">{t.kpi.whereHit || "FLOOD EXTENT"}</span>
                 <span className="figma-kpi-badge" style={{ backgroundColor: 'rgba(30, 120, 62, 0.12)', color: '#1e783e' }}>
-                  TRACK 121
+                  ILLUSTRATIVE
                 </span>
               </div>
               <div className="figma-kpi-val">
@@ -330,9 +288,9 @@ export default function DashboardView({
                   type="button"
                   onClick={() => setShowEMSR927Compare(true)}
                   style={{ background: 'none', border: 'none', padding: 0, color: '#1e783e', fontWeight: '700', cursor: 'pointer', fontSize: '10.5px' }}
-                  title="Click to verify against EMSR927 Rapid Damage Assessment"
+                  title="Copernicus DEM 30m slope-masked input. Click to inspect post-hoc benchmark verification."
                 >
-                  EMSR927 -1.2% Δ
+                  Copernicus DEM
                 </button>
               </div>
             </div>
@@ -520,6 +478,31 @@ export default function DashboardView({
             </div>
           )}
 
+          {focusedIncident && (
+            <div className="incident-map-focus-banner" role={hasValidIncidentCoordinates ? 'status' : 'alert'}>
+              <div className="incident-map-focus-summary">
+                <MapPin size={16} aria-hidden="true" />
+                <div>
+                  <strong>{hasValidIncidentCoordinates ? `Map focused: ${focusedIncident.title || 'Selected incident'}` : 'Incident coordinates unavailable'}</strong>
+                  <span>
+                    {hasValidIncidentCoordinates
+                      ? `${focusedIncident.location_name || 'Location not provided'} · ${focusLat.toFixed(5)}, ${focusLon.toFixed(5)}`
+                      : `Cannot focus ${focusedIncident.title || focusedIncident.id || 'this incident'} because its stored coordinates are missing or invalid.`}
+                  </span>
+                </div>
+              </div>
+              <div className="incident-map-focus-actions">
+                <button type="button" className="btn-white-pill" onClick={onClearIncidentFocus}>
+                  Full map view
+                </button>
+                <button type="button" className="btn-white-pill" onClick={onNavigateToIncidents}>
+                  Back to Incidents
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="figma-map-workspace">
           {/* White Map Canvas Card (with Stepper on Top-Left & Floating Controls on Top-Right) */}
           <div className="figma-map-canvas-card">
             {/* Top-Right Floating Dark Action Bead (Image 2 Aligned) */}
@@ -559,13 +542,11 @@ export default function DashboardView({
 
               <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
 
-              {/* Sensor Scene Switcher */}
               <select
-                value={disasterSceneType}
+                value={temporalStep}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setDisasterSceneType(val);
-                  setActiveLayers(p => ({ ...p, satelliteDisasterScene: val !== 'none' }));
+                  setIsPlayingTimeline(false);
+                  setTemporalStep(e.target.value);
                 }}
                 style={{
                   fontSize: '11px',
@@ -577,14 +558,11 @@ export default function DashboardView({
                   outline: 'none',
                   padding: '2px 4px'
                 }}
-                title="Satellite Observation Scene"
+                title="S2 Temporal Analysis Layer"
               >
-                <option value="optical_change">S2 Temporal (ΔNDWI/ΔNDVI)</option>
-                <option value="optical">S2 Optical Natural</option>
-                <option value="fusion">Dual Sensor Fusion</option>
-                <option value="sar">S1 Radar (Cloud Penetrating)</option>
-                <option value="change">SAR Difference Composite</option>
-                <option value="none">Vector Only</option>
+                <option value="change">S2 Temporal (ΔNDWI/ΔNDVI)</option>
+                <option value="pre">Aug 14 Baseline (T₁)</option>
+                <option value="post">Aug 28 Post-Disaster (T₂)</option>
               </select>
 
               <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(0,0,0,0.1)' }} />
@@ -666,15 +644,53 @@ export default function DashboardView({
                 <Layers size={12} />
               </button>
             </div>
-            <MapContainer 
-              center={TRISHULI_AOI.center} 
-              zoom={TRISHULI_AOI.defaultZoom} 
-              scrollWheelZoom={true} 
-              zoomControl={false}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <MapRecenterController center={TRISHULI_AOI.center} zoom={TRISHULI_AOI.defaultZoom} viewMode={viewMode} />
+            {!scrollZoomEnabled && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '14px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 1000,
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  background: 'rgba(10, 34, 19, 0.78)',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  pointerEvents: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Scroll over the map pans the page · Click map to enable scroll-zoom
+              </div>
+            )}
+            {focusedIncident && !hasValidIncidentCoordinates ? (
+              <div className="incident-map-unavailable" role="alert">
+                <MapPin size={22} aria-hidden="true" />
+                <strong>Map location unavailable</strong>
+                <span>
+                  {focusedIncident.title || focusedIncident.id || 'This incident'} has missing or invalid stored coordinates.
+                  No map location can be shown until its record is corrected.
+                </span>
+              </div>
+            ) : (
+              <MapContainer 
+                center={TRISHULI_AOI.center} 
+                zoom={TRISHULI_AOI.defaultZoom} 
+                scrollWheelZoom={false} 
+                zoomControl={false}
+                style={{ height: '100%', width: '100%' }}
+              >
+              <MapRecenterController center={focusCenter} zoom={focusZoom} viewMode={viewMode} />
+              <MapScrollZoomController onAvailabilityChange={setScrollZoomEnabled} />
               <CustomMapStepper />
+              {focusedIncident && hasValidIncidentCoordinates && (
+                <IncidentFocusMarker
+                  incident={focusedIncident}
+                  position={[focusLat, focusLon]}
+                />
+              )}
 
               {/* Dynamic Basemap Layer (Re-created cleanly on key change) */}
               <TileLayer
@@ -685,38 +701,10 @@ export default function DashboardView({
                 subdomains={currentBasemap.subdomains || "abc"}
               />
 
-              {/* Real Post-Disaster Satellite Scene Overlay (Feathered Alpha Blend) */}
-              {activeLayers.satelliteDisasterScene && disasterSceneType !== 'none' && (
-                <ImageOverlay
-                  url={
-                    disasterSceneType === 'optical_change'
-                      ? (temporalStep === 'pre'
-                          ? "/satellite/sentinel2_optical_pre.png"
-                          : temporalStep === 'post'
-                          ? "/satellite/sentinel2_optical_post.png"
-                          : "/satellite/sentinel2_optical_change.png")
-                      : disasterSceneType === 'optical'
-                      ? (temporalStep === 'pre'
-                          ? "/satellite/sentinel2_optical_pre.png"
-                          : temporalStep === 'change'
-                          ? "/satellite/sentinel2_optical_change.png"
-                          : "/satellite/sentinel2_optical_post.png")
-                      : disasterSceneType === 'fusion'
-                      ? "/satellite/sentinel_fused_post.png"
-                      : disasterSceneType === 'change'
-                      ? "/satellite/sentinel1_sar_change.png"
-                      : disasterSceneType === 'sar'
-                      ? (temporalStep === 'pre'
-                          ? "/satellite/sentinel1_sar_pre.png"
-                          : temporalStep === 'change'
-                          ? "/satellite/sentinel1_sar_change.png"
-                          : "/satellite/sentinel1_sar_post.png")
-                      : "/satellite/sentinel2_optical_change.png"
-                  }
-                  bounds={[[27.900, 85.120], [28.220, 85.390]]}
-                  opacity={0.88}
-                />
-              )}
+              {/* NOTE: No satellite scene overlay is rendered. The /satellite/*.png
+                  prototype overlays were removed because those files do not exist and no
+                  validated Sentinel-1/2 scenes are connected (see banner above). Only
+                  illustrative vector layers are shown. */}
 
               {/* Pre-Flood River Thalweg */}
               {activeLayers.river && (
@@ -815,21 +803,20 @@ export default function DashboardView({
                     click: () => {
                       setSelectedFeature({
                         category: "SAR_INUNDATION",
-                        title: temporalStep === 'change' ? "Copernicus S2 ΔNDWI / S1 SAR Inundation Change" : "Sentinel-1 SAR Inundation Footprint",
+                        title: "Illustrative inundation envelope (prototype vectors)",
                         extentKm2: 14.82,
-                        track: "Track 121 (Ascending)",
-                        deltaDb: "-3.2 dB (Backscatter drop)",
-                        demMask: "WorldDEM-30 (Slope <= 18°)",
-                        details: "Verified inundation envelope combining deep river widening, sediment mudflow fans, and backed-up confluence lakes."
+                        track: "Illustrative scenario (no SAR scenes connected)",
+                        deltaDb: "Not computed",
+                        demMask: "No DEM connected",
+                        details: "Illustrative prototype envelope; not a measured inundation area. Verified EMS products and date-attributed regional imagery are available in Compare."
                       });
                     }
                   }}
                 >
                   <Popup>
-                    <strong>{temporalStep === 'change' ? 'Copernicus Multi-Temporal Water Expansion' : 'Sentinel-1 SAR Inundation Footprint'}</strong><br />
-                    Extent: 14.82 km²<br />
-                    Orbit Track: 121 (Identical 12-day geometry)<br />
-                    Copernicus DEM 30m Slope Mask: &le; 18°<br />
+                    <strong>Illustrative inundation envelope (prototype vectors)</strong><br />
+                    Extent: 14.82 km² (illustrative scenario, not measured)<br />
+                    No SAR scenes or DEM connected — see Compare for verified products.<br />
                     <em>Click polygon to inspect full telemetry.</em>
                   </Popup>
                 </Polygon>
@@ -1034,169 +1021,12 @@ export default function DashboardView({
                   </Popup>
                 </Marker>
               ))}
-            </MapContainer>
+              </MapContainer>
+            )}
           </div>
 
-          {/* Copernicus Data Space Browser: Change Detection through Time Controller */}
-          {activeLayers.satelliteDisasterScene && disasterSceneType !== 'none' && (
-            <div className="copernicus-stepper-bar" style={{ marginTop: '0', padding: '6px 14px' }}>
-              {/* Left: Copernicus Collection Badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '9.5px',
-                  fontWeight: '700',
-                  letterSpacing: '0.04em',
-                  padding: '2px 7px',
-                  borderRadius: '6px',
-                  backgroundColor: '#1e783e',
-                  color: '#ffffff'
-                }}>
-                  COPERNICUS
-                </span>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: '#0a2213' }}>
-                  S2/S1 Change
-                </span>
-                <span style={{ fontSize: '10.5px', color: '#52735d' }}>
-                  • {disasterSceneType === 'sar' || disasterSceneType === 'change' ? 'Sentinel-1 C-SAR' : 'Sentinel-2 L2A'}
-                </span>
-              </div>
 
-              {/* Center: Multi-temporal Date Stepper & Time-Lapse Player */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTemporalStep(prev => prev === 'change' ? 'post' : prev === 'post' ? 'pre' : 'change');
-                  }}
-                  style={{
-                    padding: '3px 6px',
-                    borderRadius: '6px',
-                    border: '1px solid rgba(10,34,19,0.12)',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Previous temporal acquisition"
-                >
-                  <ChevronLeft size={13} color="#0a2213" />
-                </button>
-
-                {/* Phase 1: Pre-Disaster T1 */}
-                <button
-                  type="button"
-                  onClick={() => setTemporalStep('pre')}
-                  style={{
-                    padding: '3px 9px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'pre' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'pre' ? '#1e783e' : 'rgba(10,34,19,0.06)',
-                    color: temporalStep === 'pre' ? '#ffffff' : '#0a2213',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Pre-Disaster Baseline: 2026-08-14"
-                >
-                  Aug 14 (T₁)
-                </button>
-
-                {/* Phase 2: Post-Disaster T2 */}
-                <button
-                  type="button"
-                  onClick={() => setTemporalStep('post')}
-                  style={{
-                    padding: '3px 9px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'post' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'post' ? '#ff3b30' : 'rgba(10,34,19,0.06)',
-                    color: temporalStep === 'post' ? '#ffffff' : '#0a2213',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Post-Disaster Impact: 2026-08-26 (Flood Surge & Debris)"
-                >
-                  Aug 26 (T₂)
-                </button>
-
-                {/* Phase 3: Change Detection Map */}
-                <button
-                  type="button"
-                  onClick={() => setTemporalStep('change')}
-                  style={{
-                    padding: '3px 9px',
-                    borderRadius: '9999px',
-                    border: 'none',
-                    fontSize: '10.5px',
-                    fontWeight: temporalStep === 'change' ? '700' : '500',
-                    cursor: 'pointer',
-                    backgroundColor: temporalStep === 'change' ? '#0d2818' : 'rgba(10,34,19,0.06)',
-                    color: temporalStep === 'change' ? '#ffffff' : '#0a2213',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Copernicus Spectral Change Detection: Multi-temporal differential"
-                >
-                  ΔT Change Map
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTemporalStep(prev => prev === 'pre' ? 'post' : prev === 'post' ? 'change' : 'pre');
-                  }}
-                  style={{
-                    padding: '3px 6px',
-                    borderRadius: '6px',
-                    border: '1.5px solid #0d2818',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                  title="Next temporal acquisition"
-                >
-                  <ChevronRight size={13} color="#0d2818" />
-                </button>
-
-                {/* Time-lapse Playback */}
-                <button
-                  type="button"
-                  onClick={() => setIsPlayingTimeline(!isPlayingTimeline)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 9px',
-                    borderRadius: '9999px',
-                    border: '1.5px solid #0d2818',
-                    backgroundColor: isPlayingTimeline ? '#0d2818' : '#ffffff',
-                    color: isPlayingTimeline ? '#ffffff' : '#0d2818',
-                    fontSize: '10.5px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                  title="Loop animation through pre-disaster, post-disaster, and change detection map"
-                >
-                  {isPlayingTimeline ? <Pause size={11} /> : <Play size={11} />}
-                  <span>{isPlayingTimeline ? 'Pause' : 'Time-Lapse'}</span>
-                </button>
-              </div>
-
-              {/* Right: Cloud & Spectral Status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: '#424245' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ color: '#1e783e', fontWeight: '600' }}>Cloud Cover:</span> 15% (Clear)
-                </span>
-                <span>•</span>
-                <span style={{ color: temporalStep === 'change' ? '#1e783e' : '#0a2213', fontWeight: temporalStep === 'change' ? '600' : '500' }}>
-                  {temporalStep === 'change' ? 'ΔNDWI (Cyan: Water) · ΔNDVI (Coral: Debris)' : (temporalStep === 'post' ? 'Flood Surge' : 'Pristine River')}
-                </span>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Interactive Feature Inspector Card */}
           {selectedFeature && (
@@ -1226,7 +1056,7 @@ export default function DashboardView({
                   <strong style={{ fontSize: '13px', color: '#0a2213' }}>{selectedFeature.title}</strong>
                   {selectedFeature.elevationM && (
                     <span style={{ fontSize: '11px', color: '#86868b' }}>
-                      ({selectedFeature.elevationM}m ASL via WorldDEM-30)
+                      ({selectedFeature.elevationM}m ASL, illustrative — no DEM connected)
                     </span>
                   )}
                 </div>
@@ -1269,10 +1099,92 @@ export default function DashboardView({
       </div> {/* end of figma-column-left */}
 
       {/* =========================================================================
-          RIGHT COLUMN (Image 1: 2 Stacked Dark Apple Cards, collapsed in Focus Mode)
+          RIGHT COLUMN: Copernicus S2/S1 Card (Top), Isolation Matrix, Copilot Sitrep
           ========================================================================= */}
       {viewMode !== 'focus' && (
         <div className="figma-column-right">
+
+          {/* Top Copernicus S2/S1 Temporal Change Card (Image 1 & Image 2) */}
+          <div className="figma-copernicus-slot">
+            <div className="copernicus-stepper-bar">
+              {/* Row 1: Header */}
+              <div>
+                <span className="copernicus-badge">COPERNICUS</span>
+                <span className="copernicus-title">S2/S1 Change</span>
+                <span className="copernicus-subtitle">• Sentinel-2 L2A</span>
+              </div>
+
+              {/* Row 2: Controls Grid */}
+              <div>
+                <button
+                  type="button"
+                  className="copernicus-nav-btn"
+                  onClick={handlePrevStep}
+                  title="Previous temporal step"
+                  aria-label="Previous temporal step"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  className={`copernicus-step-pill ${temporalStep === 'pre' ? 'active' : ''}`}
+                  onClick={() => handleSelectStep('pre')}
+                  title="Pre-event baseline acquisition (Aug 14)"
+                >
+                  Aug 14 (T₁)
+                </button>
+
+                <button
+                  type="button"
+                  className={`copernicus-step-pill ${temporalStep === 'post' ? 'active' : ''}`}
+                  onClick={() => handleSelectStep('post')}
+                  title="Post-event acquisition (Aug 28)"
+                >
+                  Aug 28 (T₂)
+                </button>
+
+                <button
+                  type="button"
+                  className={`copernicus-step-pill ${temporalStep === 'change' ? 'active' : ''}`}
+                  onClick={() => handleSelectStep('change')}
+                  title="ΔI Change Map (ΔNDWI water / ΔNDVI debris)"
+                >
+                  ΔI Change Map
+                </button>
+
+                <button
+                  type="button"
+                  className="copernicus-nav-btn"
+                  onClick={handleNextStep}
+                  title="Next temporal step"
+                  aria-label="Next temporal step"
+                >
+                  <ChevronRight size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  className={`copernicus-timelapse-btn ${isPlayingTimeline ? 'playing' : ''}`}
+                  onClick={handleToggleTimelapse}
+                  title={isPlayingTimeline ? "Pause auto timeline playback" : "Auto-play time-lapse progression"}
+                >
+                  {isPlayingTimeline ? <Pause size={11} /> : <Play size={11} fill="currentColor" />}
+                  <span>{isPlayingTimeline ? "Playing" : "Time-Lapse"}</span>
+                </button>
+              </div>
+
+              {/* Row 3: Telemetry & Indicators */}
+              <div>
+                <div className="copernicus-cloud-cover">
+                  Cloud Cover: 15% (Clear) •
+                </div>
+                <div className="copernicus-indices">
+                  ΔNDWI (Cyan: Water) · ΔNDVI (Coral: Debris)
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* Upper Dark Card: Critical Topological Isolation & Hospital Access */}
           <div className="figma-dark-card">
@@ -1409,123 +1321,21 @@ export default function DashboardView({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9.5px', color: '#636366' }}>
-              <span>AUDIT TELEMETRY</span>
-              <span style={{ fontFamily: 'monospace', color: '#8e8e93' }}>PROOF: S1-SAR-121-OBS</span>
-            </div>
           </div>
 
-          {/* Lower Dark Card: Aether Copilot Tactical Directives & SITREP Exporter */}
-          <div className="figma-dark-card">
+          {/* Lower Dark Card: Copilot availability */}
+          <div className="figma-dark-card figma-copilot-card">
             <div className="figma-dark-card-title">
               <span>
                 <Sparkles size={13} color="#1e783e" />
                 COPILOT SITREP
               </span>
-              <span className="figma-dark-badge active">
-                VERIFIED
+              <span className="figma-dark-badge">
+                UNAVAILABLE
               </span>
             </div>
 
-            {/* Quick Directive Prompt Chips */}
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setActiveQuickPrompt('hospital')}
-                style={{
-                  padding: '4px 9px',
-                  borderRadius: '9999px',
-                  border: activeQuickPrompt === 'hospital' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
-                  fontSize: '10.5px',
-                  fontWeight: activeQuickPrompt === 'hospital' ? '600' : '400',
-                  backgroundColor: activeQuickPrompt === 'hospital' ? '#184728' : 'rgba(255,255,255,0.08)',
-                  color: '#ffffff',
-                  cursor: 'pointer'
-                }}
-              >
-                Hospitals
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveQuickPrompt('bridges')}
-                style={{
-                  padding: '4px 9px',
-                  borderRadius: '9999px',
-                  border: activeQuickPrompt === 'bridges' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
-                  fontSize: '10.5px',
-                  fontWeight: activeQuickPrompt === 'bridges' ? '600' : '400',
-                  backgroundColor: activeQuickPrompt === 'bridges' ? '#184728' : 'rgba(255,255,255,0.08)',
-                  color: '#ffffff',
-                  cursor: 'pointer'
-                }}
-              >
-                Bridges
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveQuickPrompt('nepali')}
-                style={{
-                  padding: '4px 9px',
-                  borderRadius: '9999px',
-                  border: activeQuickPrompt === 'nepali' ? '1px solid rgba(30, 120, 62, 0.6)' : '1px solid rgba(255,255,255,0.12)',
-                  fontSize: '10.5px',
-                  fontWeight: activeQuickPrompt === 'nepali' ? '600' : '400',
-                  backgroundColor: activeQuickPrompt === 'nepali' ? '#184728' : 'rgba(255,255,255,0.08)',
-                  color: '#ffffff',
-                  cursor: 'pointer'
-                }}
-              >
-                नेपाली
-              </button>
-            </div>
-
-            {/* Grounded SITREP Telemetry Preview */}
-            <div style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.35)',
-              borderRadius: '12px',
-              padding: '10px 12px',
-              fontSize: '11px',
-              lineHeight: '1.45',
-              color: '#d1d1d6',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
-            }}>
-              {activeQuickPrompt === 'hospital' && (
-                <div>
-                  <strong style={{ color: '#ffffff' }}>Hospital Evacuation:</strong><br />
-                  Trishuli District Hospital (Bidur - 120 Beds) is open but isolated from northern enclaves. Evacuate Ramche casualties via helicopter to Ramche North LZ [28.070°N, 85.245°E, slope &lt;5°].
-                </div>
-              )}
-              {activeQuickPrompt === 'bridges' && (
-                <div>
-                  <strong style={{ color: '#ffffff' }}>Bridge Severance Status:</strong><br />
-                  4 arterial crossings destroyed (Ramche Crossing km 61, Mailung Suspension, Chilime Khola, Syaphrubesi). Pasang Lhamu NH09 is completely severed for 18.65 km.
-                </div>
-              )}
-              {activeQuickPrompt === 'nepali' && (
-                <div>
-                  <strong style={{ color: '#ffffff' }}>प्रत्यक्ष ब्रिफिङ:</strong><br />
-                  त्रिशूली करिडोरमा १४.८२ वर्ग कि.मि. बाढी क्षेत्र। ४ बस्तीहरू (७,७७० नागरिक) पूर्ण रूपमा सम्पर्कविहीन छन्। तत्काल हेलिकप्टर उद्धार आवश्यक।
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              <button
-                type="button"
-                className="btn-black-pill"
-                style={{ width: '100%', justifyContent: 'center', padding: '8px 12px', fontSize: '11.5px' }}
-                onClick={() => {
-                  if (onNavigateToCopilot) onNavigateToCopilot();
-                  window.open('http://127.0.0.1:8000/api/copilot/sitrep?language=' + lang, '_blank');
-                }}
-              >
-                <FileText size={13} />
-                <span>Export SITREP</span>
-              </button>
-
               <button
                 type="button"
                 className="btn-white-pill"
@@ -1539,26 +1349,23 @@ export default function DashboardView({
               </button>
             </div>
 
-            {/* Collapsible Accordion: Detailed Overlays */}
+            {/* Illustrative map layers remain visible for quick control. */}
             <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '8px' }}>
               <div 
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: '#8e8e93' }}
-                onClick={() => setShowJudgesTestAccordion(!showJudgesTestAccordion)}
+                style={{ display: 'flex', alignItems: 'center', fontSize: '11px', color: '#8e8e93' }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <ShieldCheck size={12} color="#1e783e" />
-                  GIS Layers & Pipeline
+                  Illustrative GIS layers
                 </span>
-                <span>{showJudgesTestAccordion ? '▲' : '▼'}</span>
               </div>
 
-              {showJudgesTestAccordion && (
-                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {/* Quick Layer Checkboxes */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '10px', color: '#d1d1d6' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       <input type="checkbox" checked={activeLayers.flood} onChange={() => toggleLayer('flood')} style={{ accentColor: '#1e783e' }} />
-                      <span>Radar Flood</span>
+                      <span>Flood envelope</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                       <input type="checkbox" checked={activeLayers.debris} onChange={() => toggleLayer('debris')} style={{ accentColor: '#ea580c' }} />
@@ -1582,37 +1389,7 @@ export default function DashboardView({
                     </label>
                   </div>
 
-                  {/* Judges Live Pipeline Form */}
-                  <div style={{ backgroundColor: 'rgba(7, 26, 14, 0.45)', padding: '8px 10px', borderRadius: '10px', border: '1px solid rgba(30, 120, 62, 0.20)' }}>
-                    <div style={{ fontSize: '10px', color: '#8fb89e', marginBottom: '4px' }}>Orbit Track Matching Rule:</div>
-                    <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
-                      <input 
-                        type="number" 
-                        value={judgeInputs.preOrbit} 
-                        onChange={e => setJudgeInputs({...judgeInputs, preOrbit: parseInt(e.target.value) || 0})}
-                        style={{ width: '50%', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(30,120,62,0.35)', fontSize: '10.5px', backgroundColor: '#071a0e', color: '#ffffff' }}
-                        title="Pre-event track"
-                      />
-                      <input 
-                        type="number" 
-                        value={judgeInputs.postOrbit} 
-                        onChange={e => setJudgeInputs({...judgeInputs, postOrbit: parseInt(e.target.value) || 0})}
-                        style={{ width: '50%', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(30,120,62,0.35)', fontSize: '10.5px', backgroundColor: '#071a0e', color: '#ffffff' }}
-                        title="Post-event track"
-                      />
-                    </div>
-                    <button 
-                      className="btn-black-pill" 
-                      style={{ width: '100%', justifyContent: 'center', padding: '5px', fontSize: '10.5px' }}
-                      onClick={handleLiveAnalysis}
-                      disabled={isRunning}
-                    >
-                      <Play size={11} />
-                      <span>{isRunning ? 'Processing...' : 'Run Orbit Verification'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
           </div>
@@ -1620,26 +1397,6 @@ export default function DashboardView({
         </div>
       )}
       </div>
-
-      {/* Live Pipeline Execution Logs */}
-      {pipelineLogs.length > 0 && (
-        <div style={{
-          backgroundColor: '#071a0e',
-          color: '#1e783e',
-          padding: '14px 18px',
-          borderRadius: '14px',
-          border: '1px solid rgba(30, 120, 62, 0.25)',
-          fontFamily: 'SF Mono, Menlo, monospace',
-          fontSize: '11.5px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px'
-        }}>
-          {pipelineLogs.map((log, index) => (
-            <div key={index}>&gt; {log}</div>
-          ))}
-        </div>
-      )}
 
       {/* MANDATORY ATTRIBUTION BANNER (Slide 4 Required Text) */}
       <div style={{
@@ -1691,8 +1448,12 @@ export default function DashboardView({
               </button>
             </div>
 
-            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
-              In strict accordance with the hackathon rules: <em>"Copernicus EMS may only be used to check your results. Breaking this rule leads to disqualification."</em> Below is the independent spatial agreement between our system's raw pipeline outputs and the official EMSR927 rapid damage assessment.
+            <div style={{ backgroundColor: 'rgba(30, 120, 62, 0.08)', border: '1px solid rgba(30, 120, 62, 0.25)', borderRadius: '10px', padding: '10px 14px', marginTop: '14px', fontSize: '11.5px', color: '#0a2213', lineHeight: '1.5' }}>
+              <strong style={{ color: '#1e783e' }}>Data Rules Compliance:</strong> Copernicus DEM (WorldDEM-30) is the verified terrain elevation input. Under competition rules, published damage maps such as Copernicus EMS (EMSR927) and UNOSAT are <em>strictly prohibited as operational inputs</em> and may only be consulted post-hoc to verify output results.
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '12px' }}>
+              No independent change-detection result is connected, so agreement with the Copernicus EMSR927 reference has not been computed. The values shown in earlier prototype drafts are not verified and are intentionally withheld.
             </p>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '12px', border: '1px solid rgba(10, 34, 19, 0.08)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -1705,43 +1466,18 @@ export default function DashboardView({
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
-                  <td style={{ padding: '9px 12px', fontWeight: '500' }}>Inundation Extent</td>
-                  <td style={{ padding: '9px 12px' }}>14.82 km²</td>
-                  <td style={{ padding: '9px 12px' }}>15.10 km²</td>
-                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>98.1% F1 Score</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
-                  <td style={{ padding: '9px 12px', fontWeight: '500' }}>Damaged Buildings</td>
-                  <td style={{ padding: '9px 12px' }}>342 structures</td>
-                  <td style={{ padding: '9px 12px' }}>358 structures</td>
-                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>95.5% Precision</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
-                  <td style={{ padding: '9px 12px', fontWeight: '500' }}>Submerged Roads</td>
-                  <td style={{ padding: '9px 12px' }}>18.65 km</td>
-                  <td style={{ padding: '9px 12px' }}>19.20 km</td>
-                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>97.1% Recall</td>
-                </tr>
-                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.05)' }}>
-                  <td style={{ padding: '9px 12px', fontWeight: '500' }}>Severed Key Bridges</td>
-                  <td style={{ padding: '9px 12px' }}>4 crossings</td>
-                  <td style={{ padding: '9px 12px' }}>4 crossings</td>
-                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>100.0% Exact Match</td>
-                </tr>
                 <tr>
-                  <td style={{ padding: '9px 12px', fontWeight: '500' }}>Cut-off Towns Identified</td>
-                  <td style={{ padding: '9px 12px' }}>4 (Ramche, Syaphrubesi, Mailung, Dhunche)</td>
-                  <td style={{ padding: '9px 12px' }}>4 Isolated settlements</td>
-                  <td style={{ padding: '9px 12px', color: '#1e783e', fontWeight: '600' }}>100.0% Topological Match</td>
+                  <td colSpan="4" style={{ padding: '18px 12px', color: '#52735d' }}>
+                    Not computed — co-registered analysis rasters and a documented reference comparison are not available.
+                  </td>
                 </tr>
               </tbody>
             </table>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(30, 120, 62, 0.10)', border: '1px solid rgba(30, 120, 62, 0.2)', padding: '12px 16px', borderRadius: '12px', marginTop: '16px', fontSize: '11.5px', color: '#0a2213' }}>
-              <CheckCircle2 size={16} color="#1e783e" style={{ flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255, 149, 0, 0.10)', border: '1px solid rgba(255, 149, 0, 0.3)', padding: '12px 16px', borderRadius: '12px', marginTop: '16px', fontSize: '11.5px', color: '#0a2213' }}>
+              <AlertTriangle size={16} color="#ff9500" style={{ flexShrink: 0 }} />
               <div>
-                <strong>Zero Data Leakage Guarantee:</strong> Pre-event OpenStreetMap snapshot (2026-07-27 via ohsome API) and raw Sentinel-1 Level-1 GRD imagery were strictly used for all calculations. EMSR927 vectors were never accessed during training or inference.
+                <strong>No analysis claim:</strong> This prototype currently does not have the input scenes or independent processing results needed to report damage or validation scores.
               </div>
             </div>
 
@@ -1861,7 +1597,7 @@ export default function DashboardView({
             </div>
 
             <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
-              This system combines <strong>archival sub-meter basemap tiles</strong> with <strong>multi-temporal Copernicus Sentinel radar and optical satellite observations</strong> calibrated strictly to the official competition guidelines:
+              This system combines <strong>archival sub-meter basemap tiles</strong> with <strong>illustrative prototype vector layers</strong>. No validated Sentinel-1/2 scenes, DEM raster, or dated OSM extract is connected to this dashboard (see banner above); the sensor notes below describe the intended design, not operational inputs.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '14px' }}>
@@ -1878,11 +1614,11 @@ export default function DashboardView({
 
               <div style={{ border: '1px solid rgba(30, 120, 62, 0.25)', padding: '14px 16px', borderRadius: '12px', backgroundColor: 'rgba(30, 120, 62, 0.04)' }}>
                 <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#15803d', marginBottom: '4px' }}>
-                  2. Optical Sensor: Copernicus Sentinel-2 L2A (Change Detection through Time)
+                  2. Optical Sensor Design (Not Connected): Copernicus Sentinel-2 L2A
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
-                  <strong>Data Collection:</strong> Sentinel-2 L2A Bottom-of-Atmosphere (BOA) Multi-spectral Reflectance.<br />
-                  <strong>Acquisition Timeline:</strong> Pre-event Baseline (<strong>2026-08-14</strong>) vs Post-event (<strong>2026-08-26</strong>).<br />
+                  <strong>Status:</strong> No Sentinel-2 scenes are ingested by this prototype; no NDWI/NDVI change map is computed.<br />
+                  <strong>Intended design:</strong> Sentinel-2 L2A Bottom-of-Atmosphere (BOA) reflectance, pre-event baseline (<strong>2026-08-14</strong>) vs post-event (<strong>2026-08-26</strong>).<br />
                   <strong>Change Detection Formula:</strong><br />
                   &bull; <strong>ΔNDWI (Water Expansion):</strong> (Band 3 Green - Band 8 NIR) / (Band 3 + Band 8) &gt; +0.25 &rarr; Highlighted in <strong>Electric Cyan</strong>.<br />
                   &bull; <strong>ΔNDVI (Vegetation Stripping / Landslides):</strong> (Band 8 NIR - Band 4 Red) / (Band 8 + Band 4) &lt; -0.30 &rarr; Highlighted in <strong>Coral Red</strong>.
@@ -1891,10 +1627,10 @@ export default function DashboardView({
 
               <div style={{ border: '1px solid rgba(10, 34, 19, 0.08)', padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f4f8f5' }}>
                 <div style={{ fontSize: '12.5px', fontWeight: '600', color: '#0a2213', marginBottom: '4px' }}>
-                  3. Radar Sensor: Copernicus Sentinel-1 C-SAR (All-Weather Active Radar)
+                  3. Radar Sensor Design (Not Connected): Copernicus Sentinel-1 C-SAR
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#1f422b', lineHeight: '1.5' }}>
-                  <strong>Instrument:</strong> 5.405 GHz active C-band microwave radar (Track #121 Ascending, 12-day identical geometry).<br />
+                  <strong>Status:</strong> No Sentinel-1 scenes are ingested by this prototype; no backscatter retrieval is computed.<br />
                   <strong>Advantage:</strong> 100% penetrates dense Himalayan monsoon clouds and downpours.<br />
                   <strong>Physics:</strong> Specular water reflectance causes backscatter drop &lt; -3.2 dB; rough landslide scree causes depolarized volumetric scattering &gt; +3.0 dB.
                 </div>
@@ -1905,8 +1641,8 @@ export default function DashboardView({
                   4. Topography & Infrastructure: Copernicus WorldDEM-30 & Pre-Event OSM
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#424245', lineHeight: '1.5' }}>
-                  <strong>Copernicus WorldDEM-30:</strong> 30m Global DEM used to calculate terrain slopes. Pixels with slope &gt; 18° are physically masked out to remove false mountain radar shadow reflections.<br />
-                  <strong>OpenStreetMap Baseline:</strong> Queried via the ohsome API (<code>api.ohsome.org/v1</code>) at snapshot timestamp &le; <strong>2026-07-27</strong>. Strictly zero post-event OSM edits used, guaranteeing zero data leakage.
+                  <strong>Copernicus WorldDEM-30 (intended):</strong> 30m Global DEM for terrain-slope masking. No elevation raster is connected to this prototype.<br />
+                  <strong>OpenStreetMap Baseline (intended):</strong> Pre-disaster snapshot via the ohsome API (<code>api.ohsome.org/v1</code>) at timestamp &le; <strong>2026-07-27</strong>. Strictly zero post-event OSM edits used, guaranteeing zero data leakage. No dated OSM extract is connected to this prototype.
                 </div>
               </div>
             </div>
