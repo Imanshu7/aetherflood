@@ -40,6 +40,9 @@ During catastrophic Himalayan flash floods and glacial lake outburst floods (GLO
 **AetherFlood Copilot** is an open-source emergency satellite intelligence and situation report platform engineered specifically for rapid disaster response in mountainous terrain (such as the Trishuli–Bhote Koshi corridor and Budhi Gandaki basin of Nepal). Taking an **area of interest (AOI)** and a **flood event date**, it combines **Copernicus Sentinel radar and optical satellite data**, **OpenStreetMap (OSM) infrastructure vectors**, **public digital elevation models (DEM)**, and **grounded bilingual language models** to empower crisis command centers and rescue teams.
 
 ---
+## Report & Readme
+
+Open Documentation Folder for REPORT
 
 ## Answering the Three Critical Rescue Questions
 
