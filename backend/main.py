@@ -12,11 +12,19 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any, List, Literal, Optional
+import sys
 import uvicorn
 import datetime
 import os
 import logging
 import requests
+from pathlib import Path
+
+# Ensure the repository root (parent of backend/) is in sys.path so 'backend' package imports resolve
+# whether executed from repo root or inside the backend service directory on Vercel.
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
 from backend.config import PRE_EVENT_OSM_SNAPSHOT
 from backend.services.incident_data import (
@@ -42,15 +50,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS for the local frontend only. The backend binds 127.0.0.1, so an
-# open `*` origin would let any web page the operator visits call these
-# endpoints (including the AI/translation routes) from their browser.
-# Extend ALLOWED_ORIGINS via env only when a real deployment needs it.
+# CORS configuration: allows local dev, deployed Firebase origins, and any Vercel deployment domain.
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "AETHERFLOOD_ALLOWED_ORIGINS",
-        # Local Vite dev + preview, then the deployed Firebase Hosting origins.
+        # Local Vite dev + preview, then deployed Firebase Hosting origins.
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:4173,http://127.0.0.1:4173,"
         "https://aetherflood.web.app,https://aetherflood.firebaseapp.com",
@@ -60,6 +65,7 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -120,6 +126,7 @@ def root():
         ],
     }
 
+@app.get("/health")
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": "AetherFlood Copilot Engine"}
