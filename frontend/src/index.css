@@ -71,7 +71,7 @@ body {
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
   font-size: 13px;
   letter-spacing: -0.012em;
   min-height: 100vh;
@@ -96,7 +96,7 @@ body {
 /* App Container Layout (Edge-to-Edge Web Application) */
 .app-container {
   display: flex;
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
   background: transparent;
 }
@@ -121,14 +121,8 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 100%;
-  /* No overflow here on purpose: an ancestor with overflow-y:auto becomes the
-     scroll container for the sticky .top-bar below. Since this element is never
-     height-constrained it never scrolls itself, so the body scrolls while the
-     header sticks to a container that doesn't move -> the header scrolls away.
-     Letting the document scroll keeps .top-bar's sticky top:0 pinned to the
-     viewport. If a real inner scroller is ever wanted, give this element a
-     fixed height (e.g. height: 100dvh) so it becomes the actual scrollport. */
+  min-height: 100vh;
+  position: relative;
   background-color: transparent;
 }
 
@@ -138,15 +132,17 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 8px 20px;
-  background-color: rgba(255, 255, 255, 0.45);
+  background-color: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(10, 34, 19, 0.08);
+  box-shadow: 0 4px 20px rgba(10, 34, 19, 0.05);
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 9999;
   min-height: 52px;
+  width: 100%;
+  box-sizing: border-box;
   gap: 16px;
 }
 
@@ -1229,190 +1225,6 @@ body {
   border-radius: 50%;
   background: var(--overview-primary);
   box-shadow: 0 0 0 3px rgba(33, 106, 67, 0.12);
-}
-
-/* Incident view switcher — pill nav for choosing which incident to review.
-   Sticky under the app top bar so the operator can switch while reading.
-   A single sliding capsule (`.overview-view-filter-indicator`) animates
-   behind whichever pill is active, like a segmented nav bar. */
-.overview-view-filter {
-  position: sticky;
-  top: 58px;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 8px 14px;
-  border: 1px solid var(--overview-border);
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  box-shadow: 0 6px 18px rgba(24, 60, 43, 0.06);
-}
-
-/* Small-caps label on the left of the bar */
-.overview-view-filter-label {
-  flex: 0 0 auto;
-  padding-left: 4px;
-  color: var(--overview-muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.overview-view-filter-pills {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  padding: 3px;
-  border-radius: 9999px;
-  background: var(--overview-sage);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.overview-view-filter-pills::-webkit-scrollbar {
-  display: none;
-}
-
-/* Sliding capsule behind the active pill. Positioned/measured in JS; hidden
-   until the first measurement so it never flashes at the origin. */
-.overview-view-filter-indicator {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  border-radius: 9999px;
-  background: #0d2818;
-  box-shadow: 0 4px 12px rgba(10, 34, 19, 0.28);
-  opacity: 0;
-  pointer-events: none;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    width 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
-}
-
-.overview-view-filter-indicator.is-measured {
-  opacity: 1;
-}
-
-/* Pill button — transparent by default; the capsule provides the active fill */
-.overview-view-pill {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  flex: 0 0 auto;
-  padding: 7px 15px;
-  border: 1px solid transparent;
-  border-radius: 9999px;
-  background: transparent;
-  color: var(--overview-ink);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
-}
-
-.overview-view-pill:not(.is-active):hover {
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.overview-view-pill:active {
-  transform: scale(0.97);
-}
-
-.overview-view-pill:focus-visible {
-  outline: 2px solid var(--overview-primary);
-  outline-offset: 2px;
-}
-
-/* Selected pill — text inverts; the sliding capsule sits behind it */
-.overview-view-pill.is-active {
-  color: #ffffff;
-}
-
-.overview-view-pill-icon {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-/* Amber pulse dot flags the developing (ongoing) incident */
-.overview-view-pill-dot {
-  position: absolute;
-  top: -2px;
-  right: -3px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ff9500;
-  box-shadow: 0 0 0 2px var(--overview-sage);
-  animation: overview-pill-pulse 2.2s infinite ease-in-out;
-}
-
-.overview-view-pill.is-active .overview-view-pill-dot {
-  box-shadow: 0 0 0 2px #0d2818;
-}
-
-@keyframes overview-pill-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.82); }
-}
-
-.overview-view-filter-status {
-  flex: 1 1 180px;
-  min-width: 0;
-  padding-right: 8px;
-  color: var(--overview-muted);
-  font-size: 11px;
-  line-height: 1.4;
-  text-align: right;
-}
-
-@media (max-width: 860px) {
-  /* The app top bar wraps to two rows here, so the sticky offset no longer
-     holds — drop back to normal flow instead of overlapping the header. */
-  .overview-view-filter {
-    position: static;
-    border-radius: 14px;
-  }
-}
-
-@media (max-width: 640px) {
-  .overview-view-filter {
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: 16px;
-  }
-
-  /* Label moves to its own row above the full-width pill track */
-  .overview-view-filter-label {
-    flex-basis: 100%;
-    padding: 0 2px;
-  }
-
-  .overview-view-filter-pills {
-    width: 100%;
-  }
-
-  .overview-view-filter-status {
-    flex-basis: 100%;
-    padding: 0 4px 2px;
-    text-align: left;
-  }
 }
 
 .overview-status-banner {
@@ -4700,7 +4512,6 @@ body {
   flex: 0 0 auto;
 }
 
-.figma-column-right .figma-dark-card:not(.figma-copilot-card) > div:nth-child(2),
 .figma-column-right .figma-dark-card:first-child > div:nth-child(2) {
   justify-content: space-evenly;
 }
@@ -4757,147 +4568,126 @@ body {
 }
 
 .figma-copernicus-slot .copernicus-stepper-bar > div:last-child {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 3px !important;
   color: #687d70 !important;
   line-height: 1.4;
   margin-top: 2px;
 }
 
-.figma-copernicus-slot .copernicus-stepper-bar > div:last-child span {
-  color: #687d70 !important;
-}
-
-.figma-copernicus-slot .copernicus-stepper-bar > div:last-child span span:first-child {
-  color: #216a43 !important;
-}
-
-/* Dedicated styles for Copernicus Card components matching reference design */
 .copernicus-badge {
-  background-color: #2d5a3c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #216a43;
   color: #ffffff;
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
-  padding: 2.5px 7.5px;
+  padding: 2.5px 7px;
   border-radius: 9999px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
   text-transform: uppercase;
 }
 
 .copernicus-title {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 700;
-  color: #12301c;
-  line-height: 1;
+  color: #0a2213;
+  letter-spacing: -0.01em;
 }
 
 .copernicus-subtitle {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 500;
-  color: #557960;
-  line-height: 1;
+  color: #5d7566;
 }
 
 .copernicus-nav-btn {
-  width: 25px;
-  height: 25px;
-  background-color: #ffffff;
-  border: 1px solid rgba(30, 120, 62, 0.22);
-  border-radius: 7px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #12301c;
+  width: 25px;
+  height: 25px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 7px;
+  color: #1d1d1f;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(10, 34, 19, 0.05);
 }
 
 .copernicus-nav-btn:hover {
-  background-color: #f0f7f2;
-  border-color: rgba(30, 120, 62, 0.45);
-  transform: translateY(-0.5px);
-}
-
-.copernicus-nav-btn:active {
-  transform: translateY(0);
+  background: #f5f5f7;
+  border-color: rgba(0, 0, 0, 0.25);
 }
 
 .copernicus-step-pill {
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5px 10px;
   border-radius: 9999px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  border: 1px solid rgba(30, 120, 62, 0.18);
-  background: rgba(255, 255, 255, 0.65);
-  color: #20452b;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #2c3e35;
   cursor: pointer;
-  white-space: nowrap;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(10, 34, 19, 0.04);
+  white-space: nowrap;
 }
 
 .copernicus-step-pill:hover {
-  background: #ffffff;
-  border-color: rgba(30, 120, 62, 0.35);
-  color: #0f2b17;
+  background: #f0f4f1;
 }
 
 .copernicus-step-pill.active {
-  background: #111e15 !important;
-  border-color: #111e15 !important;
-  color: #ffffff !important;
+  background: #0a2213;
+  color: #ffffff;
+  border-color: #0a2213;
   font-weight: 700;
-  box-shadow: 0 2px 7px rgba(10, 34, 19, 0.25);
 }
 
 .copernicus-timelapse-btn {
-  padding: 4px 12px;
-  border-radius: 9999px;
-  font-size: 10.5px;
-  font-weight: 600;
-  border: 1px solid rgba(30, 120, 62, 0.22);
-  background: #ffffff;
-  color: #163c22;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
+  padding: 3.5px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  color: #1d1d1f;
   cursor: pointer;
-  white-space: nowrap;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(10, 34, 19, 0.05);
+  white-space: nowrap;
 }
 
 .copernicus-timelapse-btn:hover {
-  background: #f2f8f3;
-  border-color: rgba(30, 120, 62, 0.45);
+  background: #f0f4f1;
 }
 
 .copernicus-timelapse-btn.playing {
-  background: #1e783e !important;
-  border-color: #1e783e !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(30, 120, 62, 0.3);
+  background: #216a43;
+  color: #ffffff;
+  border-color: #216a43;
 }
 
 .copernicus-cloud-cover {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
-  color: #3b6248;
-  line-height: 1.4;
+  color: #216a43;
 }
 
 .copernicus-indices {
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 500;
-  color: #4c7259;
-  line-height: 1.35;
+  color: #52735d;
 }
 
 .figma-copilot-card {

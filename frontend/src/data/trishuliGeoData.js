@@ -1,9 +1,9 @@
 /**
  * Trishuli River Basin ILLUSTRATIVE prototype vectors (Rasuwa District, Nepal).
- * Competition Data Rules:
- *  - Allowed inputs: Sentinel-1, Sentinel-2, Copernicus DEM (WorldDEM-30), and pre-event OpenStreetMap (<= 2026-07-27).
- *  - Prohibited inputs: Copernicus EMS, UNOSAT or published damage maps (only permitted post-hoc to verify results).
- * Copernicus EMS activation EMSR927 is strictly a post-hoc verification reference and is never an operational input.
+ * These seeded polygons, counts, and road/building records are NOT measurements
+ * from validated Sentinel-1/2 scenes, a DEM raster, or a dated OSM extract.
+ * Copernicus EMS activation EMSR927 is a VALIDATION reference only and was not
+ * used to derive these prototype vectors. See the Dashboard banner.
  * Coordinates are formatted as [latitude, longitude] for Leaflet.
  */
 

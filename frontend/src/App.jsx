@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DashboardView from './components/DashboardView';
-import CompareView from './components/CompareView';
+import CopernicusDEMCompareView from './components/CopernicusEMSCompareView';
 import OverviewView from './components/OverviewView';
 import IncidentsView from './components/IncidentsView';
 import CopilotView from './components/CopilotView';
@@ -354,7 +354,7 @@ export default function App() {
                     lang={lang}
                   />
                 )}
-                {currentView === 'compare' && <CompareView />}
+                {currentView === 'compare' && <CopernicusDEMCompareView />}
                 {currentView === 'overview' && (
                   <OverviewView
                     onNavigateToCompare={() => setCurrentView('compare')}

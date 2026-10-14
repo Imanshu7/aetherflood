@@ -1,290 +1,480 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import DevelopingIncidentSection from './DevelopingIncidentSection';
 import HistoricalIncidentSection from './HistoricalIncidentSection';
 import { TRANSLATIONS } from '../data/translations';
-import { Layers, Radio, Satellite } from 'lucide-react';
-
-const FILTER_OPTIONS = ['all', 'developing', 'historical'];
-
-// Pill switcher items: "all" stacks both incidents, the other two isolate one.
-// `dot` marks the developing incident as an ongoing (amber) event.
-const FILTER_ITEMS = [
-  { value: 'all', icon: Layers, dot: false },
-  { value: 'developing', icon: Radio, dot: true },
-  { value: 'historical', icon: Satellite, dot: false }
-];
-
-// Where each pill scrolls to when selected. "all" starts at the top of the
-// developing incident (the newest-first stack begins there).
-const SECTION_TARGETS = {
-  all: 'overview-developing-section',
-  developing: 'overview-developing-section',
-  historical: 'overview-historical-section'
-};
-
-// Sticky offset: app top bar (~58px) plus the switcher bar and breathing room.
-const SCROLL_OFFSET = 150;
+import { 
+  Radio, 
+  Layers, 
+  Satellite, 
+  ShieldCheck, 
+  Calendar, 
+  MapPin, 
+  ArrowUpRight, 
+  AlertTriangle,
+  GitCompare,
+  CheckCircle2,
+  Clock3
+} from 'lucide-react';
 
 export default function OverviewView({ onNavigateToCompare, onNavigateToIncidents, lang = 'en' }) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
-  // Which incident(s) the operator wants on screen. "all" keeps the original
-  // newest-first stack; the other two isolate a single incident for review.
-  const [filter, setFilter] = useState('all');
-  const activeFilter = FILTER_OPTIONS.includes(filter) ? filter : 'all';
-
-  const pillsTrackRef = useRef(null);
-  const pillRefs = useRef({});
-  // Geometry of the sliding capsule behind the active pill.
-  const [indicator, setIndicator] = useState(null);
-
-  const filterItems = FILTER_ITEMS.map(({ value, icon, dot }) => ({
-    value,
-    icon,
-    dot,
-    label: {
-      all: t.overview.filterAll,
-      developing: t.overview.filterDeveloping,
-      historical: t.overview.filterHistorical
-    }[value],
-    hint: {
-      all: t.overview.filterHintAll,
-      developing: t.overview.filterHintDeveloping,
-      historical: t.overview.filterHintHistorical
-    }[value]
-  }));
-
-  const filterStatus = {
-    all: t.overview.filterCountAll,
-    developing: t.overview.filterCountDeveloping,
-    historical: t.overview.filterCountHistorical
-  }[activeFilter];
-
-  // Keep the sliding indicator aligned with the active pill. Re-measured on
-  // resize and on container/font size changes so the capsule never drifts.
-  useEffect(() => {
-    const track = pillsTrackRef.current;
-    const activePill = pillRefs.current[activeFilter];
-    if (!track || !activePill) return undefined;
-
-    const update = () => {
-      setIndicator({ left: activePill.offsetLeft, width: activePill.offsetWidth });
-    };
-    update();
-
-    let observer;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(update);
-      observer.observe(track);
-      observer.observe(activePill);
-    }
-    window.addEventListener('resize', update);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [activeFilter]);
-
-  // Scroll the active pill into view inside the (horizontally scrollable) pill
-  // track on small screens — without moving the page itself.
-  useEffect(() => {
-    const track = pillsTrackRef.current;
-    const activePill = pillRefs.current[activeFilter];
-    if (!track || !activePill || track.scrollWidth <= track.clientWidth) return;
-    track.scrollTo({
-      left: activePill.offsetLeft - (track.clientWidth - activePill.offsetWidth) / 2,
-      behavior: 'smooth'
-    });
-  }, [activeFilter]);
-
-  // Scroll the newly revealed section into view under the sticky chrome.
-  const scrollToSection = (value) => {
-    const section = document.getElementById(SECTION_TARGETS[value] || SECTION_TARGETS.all);
-    if (!section) return;
-    const top = section.getBoundingClientRect().top + window.scrollY - SCROLL_OFFSET;
-    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-  };
-
-  const selectFilter = (value) => {
-    if (!FILTER_OPTIONS.includes(value)) return;
-    if (value === activeFilter) {
-      // Re-selecting the current pill re-centres its section.
-      scrollToSection(value);
-      return;
-    }
-    setFilter(value);
-    // Wait two frames so React has painted the newly mounted section (and the
-    // indicator has a fresh measurement) before scrolling to it.
-    requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(value)));
-  };
-
-  // Roving arrow-key navigation, per the WAI-ARIA tabs pattern.
-  const handleFilterKeyDown = (event) => {
-    const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-    if (!dir) return;
-    event.preventDefault();
-    const i = FILTER_OPTIONS.indexOf(activeFilter);
-    const next = FILTER_OPTIONS[(i + dir + FILTER_OPTIONS.length) % FILTER_OPTIONS.length];
-    selectFilter(next);
-    document.getElementById(`overview-filter-${next}`)?.focus();
-  };
+  // Selected flood state: '26aug' | '11oct' | 'both'
+  const [selectedFlood, setSelectedFlood] = useState('both');
 
   return (
-    <div className="overview-page">
-      <header className="overview-page-header">
-        <div>
-          <div className="overview-page-eyebrow">{t.overview.eyebrow}</div>
-          <h1>{t.overview.title}</h1>
-          <p>
-            {t.overview.description}
-          </p>
-        </div>
-        <div className="overview-page-scope" aria-label="Overview scope">
-          <span className="overview-page-scope-dot" aria-hidden="true" />
-          <span>{t.overview.scope}</span>
-        </div>
-      </header>
+    <div className="overview-page" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      
+      {/* Top Header Card with Integrated Pill Selector */}
+      <div style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '22px',
+        padding: '20px 24px',
+        border: '1px solid rgba(10, 34, 19, 0.08)',
+        boxShadow: '0 8px 24px rgba(10, 34, 19, 0.04), inset 0 1px 1.5px rgba(255, 255, 255, 0.95)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '14px'
+        }}>
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              color: '#1e783e',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              marginBottom: '6px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#1e783e' }} />
+              {t.overview.eyebrow}
+            </div>
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '800',
+              color: '#0a2213',
+              letterSpacing: '-0.025em',
+              margin: '0 0 6px 0'
+            }}>
+              {t.overview.title}
+            </h1>
+            <p style={{
+              fontSize: '12.5px',
+              color: '#52735d',
+              margin: 0,
+              maxWidth: '680px',
+              lineHeight: '1.5'
+            }}>
+              {selectedFlood === '26aug' 
+                ? (lang === 'ne' 
+                    ? '२६ अगस्ट २०२६ को त्रिशूली बेसिन बाढीको प्रमाणित उपग्रह तुलना, पूर्वाधार क्षति र मानवीय प्रतिवेदन समीक्षा गर्नुहोस्।' 
+                    : 'Review verified satellite comparisons, highway disruptions, and agency reports for the 26 August 2026 Trishuli flood.')
+                : selectedFlood === '11oct'
+                  ? (lang === 'ne'
+                      ? '११ अक्टोबर २०२६ को बुढीगण्डकी पहिरो नदी अवरोध, झोलुङ्गे पुल क्षति र प्रारम्भिक स्थल रिपोर्टिङ समीक्षा गर्नुहोस्।'
+                      : 'Review preliminary field reporting and monitored data for the 11 October 2026 Budhi Gandaki incident.')
+                  : t.overview.description}
+            </p>
+          </div>
 
-      {/* Incident View Switcher — pill nav to choose which incident to review */}
-      <div
-        className="overview-view-filter"
-        role="tablist"
-        aria-label={t.overview.filterLabel}
-        onKeyDown={handleFilterKeyDown}
-      >
-        <span className="overview-view-filter-label" aria-hidden="true">
-          {t.overview.filterLabel}
-        </span>
-        <div className="overview-view-filter-pills" ref={pillsTrackRef}>
-          {/* Sliding capsule behind the active pill */}
-          <span
-            className={`overview-view-filter-indicator${indicator ? ' is-measured' : ''}`}
-            aria-hidden="true"
-            style={indicator
-              ? { transform: `translateX(${indicator.left}px)`, width: `${indicator.width}px` }
-              : undefined}
-          />
-          {filterItems.map(({ value, icon: Icon, dot, label, hint }) => {
-            const isActive = activeFilter === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                id={`overview-filter-${value}`}
-                ref={(el) => { pillRefs.current[value] = el; }}
-                aria-selected={isActive}
-                aria-controls={
-                  value === 'developing' ? 'overview-developing-section'
-                    : value === 'historical' ? 'overview-historical-section'
-                      : undefined
-                }
-                tabIndex={isActive ? 0 : -1}
-                className={`overview-view-pill${isActive ? ' is-active' : ''}`}
-                title={hint}
-                onClick={() => selectFilter(value)}
-              >
-                <span className="overview-view-pill-icon" aria-hidden="true">
-                  {dot && <span className="overview-view-pill-dot" />}
-                  <Icon size={13} strokeWidth={2.4} />
-                </span>
-                <span className="overview-view-pill-label">{label}</span>
-              </button>
-            );
-          })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              fontSize: '10.5px',
+              backgroundColor: 'rgba(30, 120, 62, 0.1)',
+              color: '#1e783e',
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              fontWeight: '600',
+              border: '1px solid rgba(30, 120, 62, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <ShieldCheck size={12} color="#1e783e" />
+              {t.overview.scope}
+            </span>
+          </div>
         </div>
-        <span className="overview-view-filter-status" aria-live="polite">
-          {filterStatus}
-        </span>
+
+        {/* Prominent Pill Switcher Bar */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '12px',
+          borderTop: '1px solid rgba(10, 34, 19, 0.08)',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          
+          {/* Segmented Pill Selector */}
+          <div style={{
+            display: 'inline-flex',
+            backgroundColor: '#f2f7f4',
+            borderRadius: '9999px',
+            padding: '4px',
+            border: '1px solid rgba(10, 34, 19, 0.12)',
+            boxShadow: 'inset 0 1px 2px rgba(10, 34, 19, 0.04)',
+            gap: '4px',
+            flexWrap: 'wrap'
+          }}>
+            {/* Trishuli Flood 26 Aug Pill */}
+            <button
+              id="pill-trishuli-flood"
+              type="button"
+              onClick={() => setSelectedFlood('26aug')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 15px',
+                borderRadius: '9999px',
+                border: 'none',
+                fontSize: '11.5px',
+                fontWeight: selectedFlood === '26aug' ? '700' : '500',
+                cursor: 'pointer',
+                backgroundColor: selectedFlood === '26aug' ? '#0d2818' : 'transparent',
+                color: selectedFlood === '26aug' ? '#ffffff' : '#0a2213',
+                boxShadow: selectedFlood === '26aug' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none',
+                transition: 'all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1)'
+              }}
+            >
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: selectedFlood === '26aug' ? '#34d399' : '#1e783e',
+                boxShadow: selectedFlood === '26aug' ? '0 0 6px #34d399' : 'none',
+                display: 'inline-block'
+              }} />
+              <span>{t.overview.pillTrishuli}</span>
+              <span style={{
+                fontSize: '9.5px',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                backgroundColor: selectedFlood === '26aug' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(30, 120, 62, 0.1)',
+                color: selectedFlood === '26aug' ? '#a7f3d0' : '#1e783e',
+                fontWeight: '600'
+              }}>
+                Verified
+              </span>
+            </button>
+
+            {/* Budhi Gandaki 11 Oct Pill */}
+            <button
+              id="pill-budhi-gandaki"
+              type="button"
+              onClick={() => setSelectedFlood('11oct')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 15px',
+                borderRadius: '9999px',
+                border: 'none',
+                fontSize: '11.5px',
+                fontWeight: selectedFlood === '11oct' ? '700' : '500',
+                cursor: 'pointer',
+                backgroundColor: selectedFlood === '11oct' ? '#0d2818' : 'transparent',
+                color: selectedFlood === '11oct' ? '#ffffff' : '#0a2213',
+                boxShadow: selectedFlood === '11oct' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none',
+                transition: 'all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1)'
+              }}
+            >
+              <span style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: selectedFlood === '11oct' ? '#fbbf24' : '#d97706',
+                boxShadow: selectedFlood === '11oct' ? '0 0 6px #fbbf24' : 'none',
+                display: 'inline-block'
+              }} />
+              <span>{t.overview.pillBudhi}</span>
+              <span style={{
+                fontSize: '9.5px',
+                padding: '1px 6px',
+                borderRadius: '9999px',
+                backgroundColor: selectedFlood === '11oct' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(217, 119, 6, 0.1)',
+                color: selectedFlood === '11oct' ? '#fde68a' : '#d97706',
+                fontWeight: '600'
+              }}>
+                Developing
+              </span>
+            </button>
+
+            {/* Both Floods / Side-by-Side Pill */}
+            <button
+              id="pill-compare-both"
+              type="button"
+              onClick={() => setSelectedFlood('both')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '7px 15px',
+                borderRadius: '9999px',
+                border: 'none',
+                fontSize: '11.5px',
+                fontWeight: selectedFlood === 'both' ? '700' : '500',
+                cursor: 'pointer',
+                backgroundColor: selectedFlood === 'both' ? '#0d2818' : 'transparent',
+                color: selectedFlood === 'both' ? '#ffffff' : '#0a2213',
+                boxShadow: selectedFlood === 'both' ? '0 2px 8px rgba(10, 34, 19, 0.25)' : 'none',
+                transition: 'all 0.18s cubic-bezier(0.25, 0.1, 0.25, 1)'
+              }}
+            >
+              <GitCompare size={13} color={selectedFlood === 'both' ? '#ffffff' : '#1e783e'} />
+              <span>{t.overview.pillBoth}</span>
+            </button>
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              type="button" 
+              onClick={onNavigateToIncidents}
+              className="btn-white-pill"
+              style={{ fontSize: '11px', padding: '6px 12px' }}
+            >
+              {t.overview.viewRegistry}
+            </button>
+            <button 
+              type="button" 
+              onClick={onNavigateToCompare}
+              className="btn-dark-green-pill"
+              style={{ fontSize: '11px', padding: '6px 14px' }}
+            >
+              <Satellite size={12} color="#ffffff" />
+              <span>{t.overview.compareHistorical}</span>
+            </button>
+          </div>
+
+        </div>
       </div>
 
-      {/* Incident Status Banner — only relevant when the developing incident is on screen */}
-      {activeFilter !== 'historical' && (
+      {/* Dynamic Status Banner depending on selected filter */}
       <div className="overview-status-banner" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#f3f8f4',
-        padding: '16px 22px',
-        borderRadius: '14px',
-        border: '1px solid #c7dccb',
-        boxShadow: '0 7px 20px rgba(24, 60, 43, 0.05)',
+        backgroundColor: selectedFlood === '11oct' ? '#fffdf7' : '#f3f8f4',
+        padding: '14px 20px',
+        borderRadius: '16px',
+        border: selectedFlood === '11oct' ? '1px solid #fae8b4' : '1px solid #c7dccb',
+        boxShadow: '0 4px 16px rgba(24, 60, 43, 0.04)',
         flexWrap: 'wrap',
-        gap: '12px'
+        gap: '12px',
+        transition: 'all 0.2s ease'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '36px',
             height: '36px',
             borderRadius: '10px',
-            backgroundColor: '#1e783e',
+            backgroundColor: selectedFlood === '11oct' ? '#d97706' : '#1e783e',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#FFFFFF'
+            color: '#FFFFFF',
+            flexShrink: 0
           }}>
-            <Radio size={18} />
+            {selectedFlood === '11oct' ? <Radio size={18} /> : selectedFlood === '26aug' ? <Satellite size={18} /> : <Layers size={18} />}
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.015em' }}>
-                {t.overview.bannerTitle}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0a2213', letterSpacing: '-0.015em' }}>
+                {selectedFlood === '26aug' 
+                  ? t.overview.bannerTitleTrishuli 
+                  : selectedFlood === '11oct' 
+                    ? t.overview.bannerTitle 
+                    : t.overview.bannerTitleBoth}
               </span>
               <span style={{
-                fontSize: '10px',
-                fontWeight: '600',
+                fontSize: '9.5px',
+                fontWeight: '700',
                 padding: '2px 8px',
                 borderRadius: '9999px',
-                backgroundColor: 'rgba(255, 149, 0, 0.12)',
-                color: '#ff9500',
-                border: '1px solid rgba(255, 149, 0, 0.25)'
+                backgroundColor: selectedFlood === '11oct' ? 'rgba(255, 149, 0, 0.12)' : 'rgba(30, 120, 62, 0.12)',
+                color: selectedFlood === '11oct' ? '#d97706' : '#1e783e',
+                border: selectedFlood === '11oct' ? '1px solid rgba(255, 149, 0, 0.25)' : '1px solid rgba(30, 120, 62, 0.25)'
               }}>
-                {t.overview.bannerEvent}
+                {selectedFlood === '26aug' 
+                  ? t.overview.bannerEventTrishuli 
+                  : selectedFlood === '11oct' 
+                    ? t.overview.bannerEvent 
+                    : t.overview.bannerEventBoth}
               </span>
             </div>
             <div style={{ fontSize: '11px', color: '#52735d', marginTop: '2px' }}>
-              {t.overview.bannerSub}
+              {selectedFlood === '26aug' 
+                ? t.overview.bannerSubTrishuli 
+                : selectedFlood === '11oct' 
+                  ? t.overview.bannerSub 
+                  : t.overview.bannerSubBoth}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button 
-            type="button" 
-            onClick={onNavigateToIncidents}
-            className="btn-white-pill"
-            style={{ fontSize: '11px' }}
-          >
-            {t.overview.viewRegistry}
-          </button>
-          <button 
-            type="button" 
-            onClick={onNavigateToCompare}
-            className="btn-dark-green-pill"
-            style={{ fontSize: '11px' }}
-          >
-            {t.overview.compareHistorical}
-          </button>
+        {/* Quick Attribute Pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {selectedFlood === '26aug' && (
+            <>
+              <span style={{ fontSize: '10.5px', color: '#1e783e', backgroundColor: 'rgba(30, 120, 62, 0.08)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                Rasuwa District · Northern Border
+              </span>
+              <span style={{ fontSize: '10.5px', color: '#1e783e', backgroundColor: 'rgba(30, 120, 62, 0.08)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                4 Verified Satellite Pairs
+              </span>
+            </>
+          )}
+          {selectedFlood === '11oct' && (
+            <>
+              <span style={{ fontSize: '10.5px', color: '#b45309', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                Gorkha District · Gandaki
+              </span>
+              <span style={{ fontSize: '10.5px', color: '#b45309', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                2 Severed Suspension Bridges
+              </span>
+            </>
+          )}
+          {selectedFlood === 'both' && (
+            <span style={{ fontSize: '10.5px', color: '#1e783e', backgroundColor: 'rgba(30, 120, 62, 0.08)', padding: '3px 8px', borderRadius: '6px', fontWeight: '600' }}>
+              Cross-Basin Multi-Temporal Dataset
+            </span>
+          )}
         </div>
       </div>
-      )}
 
-      {/* Primary Dedicated Developing Incident Experience */}
-      {activeFilter !== 'historical' && (
-        <div id="overview-developing-section" role="tabpanel" aria-labelledby="overview-filter-developing">
-          <DevelopingIncidentSection
-            onNavigateToCompare={onNavigateToCompare}
-            onNavigateToIncidents={onNavigateToIncidents}
-            lang={lang}
-          />
+      {/* Side-by-Side Comparative Matrix (Rendered when 'both' is selected) */}
+      {selectedFlood === 'both' && (
+        <div style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '20px',
+          border: '1px solid rgba(10, 34, 19, 0.08)',
+          boxShadow: '0 4px 16px rgba(10, 34, 19, 0.04)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <GitCompare size={16} color="#1e783e" />
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#0a2213', margin: 0 }}>
+              {lang === 'ne' ? 'घटना सारांश म्याट्रिक्स (२६ अगस्ट vs ११ अक्टोबर)' : 'Incident Summary Comparison Matrix (26 Aug vs 11 Oct)'}
+            </h3>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.12)', color: '#52735d' }}>
+                  <th style={{ padding: '8px 12px', fontWeight: '700' }}>Dimension</th>
+                  <th style={{ padding: '8px 12px', fontWeight: '700', color: '#1e783e' }}>
+                    Incident A: Trishuli Flood (26 Aug 2026)
+                  </th>
+                  <th style={{ padding: '8px 12px', fontWeight: '700', color: '#d97706' }}>
+                    Incident B: Budhi Gandaki Flood (11 Oct 2026)
+                  </th>
+                </tr>
+              </thead>
+              <tbody style={{ color: '#0a2213' }}>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#52735d' }}>Hazard Trigger</td>
+                  <td style={{ padding: '8px 12px' }}>Glacier collapse &amp; Headwaters GLOF surge</td>
+                  <td style={{ padding: '8px 12px' }}>Chumchet Landslide dam breach &amp; flash flood</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)', backgroundColor: '#fafdfb' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#52735d' }}>River Basin &amp; District</td>
+                  <td style={{ padding: '8px 12px' }}>Trishuli River Basin, Rasuwa District</td>
+                  <td style={{ padding: '8px 12px' }}>Budhi Gandaki River, Gorkha District</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#52735d' }}>Satellite Earth Observation</td>
+                  <td style={{ padding: '8px 12px' }}>4 Verified Sentinel-2 / Landsat-9 SWIR pairs connected</td>
+                  <td style={{ padding: '8px 12px' }}>Event-specific high-res pairs pending verification (no pair connected)</td>
+                </tr>
+                <tr style={{ borderBottom: '1px solid rgba(10, 34, 19, 0.06)', backgroundColor: '#fafdfb' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#52735d' }}>Infrastructure Disruptions</td>
+                  <td style={{ padding: '8px 12px' }}>Pasang Lhamu Highway (NH09) riverbank washouts</td>
+                  <td style={{ padding: '8px 12px' }}>2 Suspension bridges (Nyakchet-Sirdibas, Soti) washed away</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '8px 12px', fontWeight: '600', color: '#52735d' }}>Data Grounding Source</td>
+                  <td style={{ padding: '8px 12px' }}>Copernicus Rapid Mapping &amp; ESA Space Support</td>
+                  <td style={{ padding: '8px 12px' }}>ICIMOD Disaster Cutoff &amp; The Kathmandu Post Field Reports</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {activeFilter !== 'developing' && (
-        <div id="overview-historical-section" role="tabpanel" aria-labelledby="overview-filter-historical">
-          <HistoricalIncidentSection onNavigateToCompare={onNavigateToCompare} lang={lang} />
-        </div>
+      {/* Conditionally Rendered Incident Details based on selectedFlood */}
+      {selectedFlood === '11oct' && (
+        <DevelopingIncidentSection
+          onNavigateToCompare={onNavigateToCompare}
+          onNavigateToIncidents={onNavigateToIncidents}
+          lang={lang}
+        />
+      )}
+
+      {selectedFlood === '26aug' && (
+        <HistoricalIncidentSection 
+          onNavigateToCompare={onNavigateToCompare} 
+          lang={lang} 
+        />
+      )}
+
+      {selectedFlood === 'both' && (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '6px 12px',
+              backgroundColor: 'rgba(10, 34, 19, 0.04)',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#0a2213'
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#1e783e' }} />
+              PART 1: HISTORICAL TRISHULI FLOOD (26 AUGUST 2026)
+            </div>
+            <HistoricalIncidentSection onNavigateToCompare={onNavigateToCompare} lang={lang} />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '10px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '6px 12px',
+              backgroundColor: 'rgba(217, 119, 6, 0.08)',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#92400e'
+            }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#d97706' }} />
+              PART 2: DEVELOPING BUDHI GANDAKI FLOOD (11 OCTOBER 2026)
+            </div>
+            <DevelopingIncidentSection
+              onNavigateToCompare={onNavigateToCompare}
+              onNavigateToIncidents={onNavigateToIncidents}
+              lang={lang}
+            />
+          </div>
+        </>
       )}
 
     </div>
   );
 }
+

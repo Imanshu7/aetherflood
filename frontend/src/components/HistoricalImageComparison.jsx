@@ -163,7 +163,7 @@ export default function HistoricalImageComparison({ position, onPositionChange, 
           <p>{comparison.location} · Nepal–Tibet flood, 26 August 2026</p>
           {selectedLocation && (
             <p className="historical-image-comparison-selected-location">
-              Selected EMS location: {selectedLocation}
+              Selected DEM / Sentinel location: {selectedLocation}
             </p>
           )}
         </div>

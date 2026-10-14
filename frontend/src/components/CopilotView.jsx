@@ -101,11 +101,30 @@ export default function CopilotView({ currentUser, lang = 'en', onLanguageChange
     if (revealTimerRef.current) clearInterval(revealTimerRef.current);
   }, []);
 
+  // Strips any internal reasoning/thinking tokens (<think>...</think>, <thought>, etc.)
+  // so the user receives only clean, structured, authoritative responses.
+  const cleanThinkingText = (raw) => {
+    if (!raw) return '';
+    let text = String(raw);
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    text = text.replace(/<thought>[\s\S]*?<\/thought>/gi, '');
+    text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '');
+    if (/<think>/i.test(text)) {
+      const parts = text.split(/<think>/i);
+      const after = parts.slice(1).join('');
+      const marker = after.match(/(\n\n#|\n\n\*\*|[Aa]nswer:|[Ss]ummary:)/);
+      text = marker ? (parts[0] + '\n\n' + after.slice(marker.index)).trim() : parts[0].trim();
+    }
+    text = text.replace(/<\/?(?:think|thought|reasoning)>/gi, '');
+    text = text.replace(/^(?:thinking process|internal thought|reasoning):?\s*[\s\S]*?(?=\n\n|\Z)/gi, '');
+    return text.trim();
+  };
+
   // Fills the newest bot bubble a chunk at a time so a long grounded answer
   // reads as being written instead of appearing in one jump. Resolves when the
   // bubble holds the complete text.
   const revealProgressively = (fullText) => {
-    const text = String(fullText || '');
+    const text = cleanThinkingText(fullText || '');
     if (prefersReducedMotion || text.length <= REVEAL_CHUNK) {
       setMessages(prev => prev.map((m) => (
         m.streaming ? { ...m, text, streaming: false } : m
@@ -202,7 +221,8 @@ export default function CopilotView({ currentUser, lang = 'en', onLanguageChange
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || `Copilot request failed (${res.status}).`);
       
-      const replyText = typeof data.reply === 'object' ? (data.reply.summary || JSON.stringify(data.reply)) : (data.summary || data.reply);
+      const rawReply = typeof data.reply === 'object' ? (data.reply.summary || JSON.stringify(data.reply)) : (data.summary || data.reply);
+      const replyText = cleanThinkingText(rawReply);
       const proof = data.audit_proof;
       const provider = data.provider || data.model_provider || 'grounded';
       const model = data.model || data.model_name;
@@ -302,7 +322,8 @@ const isSafeHttpUrl = (url) => {
     });
   };
 
-  const renderMessageContent = (text) => {
+  const renderMessageContent = (rawText) => {
+    const text = cleanThinkingText(rawText);
     if (!text) return null;
     const lines = text.split('\n');
     return lines.map((line, idx) => {
@@ -349,44 +370,32 @@ const isSafeHttpUrl = (url) => {
     });
   };
 
-  const isAugust = selectedIncident === 'nepal-tibet-2026-08-26';
-
-  // The conversation can drift onto the other incident (retrieval is
-  // query-driven), so suggestions and the placeholder follow what has actually
-  // been discussed rather than only the pill in the header. The incident id
-  // comes from the backend response, which is authoritative — sniffing the
-  // answer text is unreliable because every reply quotes a related incident.
-  const activeIncidentId = useMemo(() => {
-    for (let i = displayMessages.length - 1; i >= 0; i -= 1) {
-      const m = displayMessages[i];
-      if (m.sender === 'bot' && !m.isGreeting && m.incidentId) return m.incidentId;
-    }
-    return selectedIncident;
-  }, [displayMessages, selectedIncident]);
-
-  const talkingAugust = activeIncidentId === 'nepal-tibet-2026-08-26';
+  const isAugust = true;
+  const activeIncidentId = 'nepal-tibet-2026-08-26';
 
   const inputPlaceholder = lang === 'ne'
-    ? `${talkingAugust ? 'अगस्ट २६' : 'अक्टोबर ११'} बाढी सम्बन्धी सोध्नुहोस्...`
-    : `Ask about the ${talkingAugust ? '26 Aug' : '11 Oct'} incident…`;
+    ? 'त्रिशूली बाढी (२६ अगस्ट २०२६) सम्बन्धी सोध्नुहोस्...'
+    : 'Ask about the Trishuli Flood (26 Aug 2026)…';
 
-  // Suggestions progress with the conversation instead of being static.
+  // Suggestions progress focused exclusively on the Trishuli flood
   const activeSuggestions = useMemo(() => {
-    if (talkingAugust) {
+    if (lang === 'ne') {
       return [
-        { label: 'Bridges affected', query: 'Which bridges were reported affected?' },
-        { label: 'Verification status', query: 'What information is still unverified?' },
-        { label: 'Satellite pairs', query: 'Which satellite comparison pairs are available?' },
-        { label: 'Sources', query: 'Which sources reported this incident?' },
+        { label: 'क्षतिग्रस्त पुलहरू', query: 'कुन कुन पुलहरू क्षतिग्रस्त वा बगेका थिए?' },
+        { label: 'मानवीय क्षति', query: 'पुष्टि भएको मानवीय क्षति कति छ?' },
+        { label: 'उपग्रह जोडीहरू', query: 'कुन कुन उपग्रह तुलना जोडी उपलब्ध छन्?' },
+        { label: 'प्रमाणित स्रोतहरू', query: 'कुन कुन आधिकारिक स्रोतहरूबाट विवरण प्राप्त भएको छ?' },
+        { label: 'तथ्याङ्क अभाव', query: 'कुन कुन विवरण अझै अपुष्ट वा अनुपलब्ध छन्?' },
       ];
     }
     return [
-      { label: 'Bridges affected', query: 'Which bridges were reported affected?' },
-      { label: 'Casualties', query: 'What is the confirmed casualty count?' },
-      { label: 'Missing data', query: 'What information is still missing?' },
-      { label: 'Compare with August', query: 'Compare this with the August Trishuli flood.' },
+      { label: 'Bridges affected', query: 'Which bridges were reported affected in Trishuli?' },
+      { label: 'Casualties', query: 'What is the confirmed casualty count for Trishuli flood?' },
+      { label: 'Satellite pairs', query: 'Which satellite comparison pairs are available for Trishuli?' },
+      { label: 'Verified sources', query: 'Which sources reported the Trishuli flood?' },
+      { label: 'Data gaps', query: 'What information is still unverified or missing for Trishuli?' },
     ];
-  }, [talkingAugust]);
+  }, [lang]);
 
   return (
     <div className="copilot-view" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -433,48 +442,29 @@ const isSafeHttpUrl = (url) => {
         {/* Right Controls: Incident Selector + Language + Sitrep */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           
-          {/* Incident Selector Pills */}
+          {/* Trishuli Flood Scope Badge (26 Aug 2026 Only) */}
           <div style={{
-            display: 'flex',
-            backgroundColor: '#f2f7f4',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '7px',
+            backgroundColor: '#0d2818',
+            color: '#ffffff',
             borderRadius: '9999px',
-            padding: '2px',
-            border: '1px solid rgba(10, 34, 19, 0.12)'
+            padding: '5px 14px',
+            fontSize: '11.5px',
+            fontWeight: '700',
+            boxShadow: '0 2px 6px rgba(10, 34, 19, 0.25)',
+            letterSpacing: '-0.01em'
           }}>
-            <button
-              type="button"
-              onClick={() => setSelectedIncident('nepal-tibet-2026-08-26')}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '9999px',
-                border: 'none',
-                fontSize: '11px',
-                fontWeight: isAugust ? '700' : '500',
-                cursor: 'pointer',
-                backgroundColor: isAugust ? '#0d2818' : 'transparent',
-                color: isAugust ? '#ffffff' : '#0a2213',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              Incident A (26 Aug 2026)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedIncident('budhi-gandaki-2026-10-11')}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '9999px',
-                border: 'none',
-                fontSize: '11px',
-                fontWeight: !isAugust ? '700' : '500',
-                cursor: 'pointer',
-                backgroundColor: !isAugust ? '#0d2818' : 'transparent',
-                color: !isAugust ? '#ffffff' : '#0a2213',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              Incident B (11 Oct 2026)
-            </button>
+            <span style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              backgroundColor: '#0d2818',
+              boxShadow: '0 0 6px #34d399',
+              display: 'inline-block'
+            }} />
+            <span>{lang === 'ne' ? 'त्रिशूली बाढी (२६ अगस्ट २०२६)' : 'Trishuli Flood (26 Aug 2026)'}</span>
           </div>
 
           {/* Bilingual Switcher */}
@@ -541,7 +531,7 @@ const isSafeHttpUrl = (url) => {
         <div className="grey-card copilot-incidents-sidebar" style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{ fontSize: '12.5px', color: '#0a2213', fontWeight: '700' }}>
-              {isAugust ? t.copilot.groundingRecordsNepalTibet : t.copilot.groundingRecordsBudhi}
+              {lang === 'ne' ? 'त्रिशूली बाढी अभिलेख (२६ अगस्ट २०२६)' : 'Trishuli Flood Records (26 Aug 2026)'}
             </div>
             <span style={{ fontSize: '10px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 7px', borderRadius: '9999px' }}>
               {t.copilot.verifiedCount.replace('{n}', String(incidentRecords.length))}

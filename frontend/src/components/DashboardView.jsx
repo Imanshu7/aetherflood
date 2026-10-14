@@ -257,7 +257,7 @@ export default function DashboardView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
       <div role="note" style={{ padding: '12px 16px', background: '#fff8e7', border: '1px solid #e6c87a', color: '#624b12', fontSize: '12px', lineHeight: 1.5 }}>
-        <strong>Illustrative demo only.</strong> Dashboard impact figures, marker locations, flood/debris overlays, satellite-pass rows, and route analysis are seeded prototype content—not measurements from validated event imagery or field reports. Do not use them for operational decisions. Verified EMS products and date-attributed regional imagery are available in Compare.
+        <strong>Illustrative demo only.</strong> Dashboard impact figures, marker locations, flood/debris overlays, satellite-pass rows, and route analysis are seeded prototype content—not measurements from validated event imagery or field reports. Do not use them for operational decisions. Copernicus DEM terrain layers and date-attributed regional imagery are available in Compare.
         {bonusTraceUnavailable && <div>DEM-based upstream tracing is unavailable because no elevation raster or hydrologic network is connected.</div>}
       </div>
       <div className={`figma-layout-container ${viewMode === 'focus' ? 'focus-mode' : ''}`}>
@@ -282,15 +282,15 @@ export default function DashboardView({
                 14.82 <span>km²</span>
               </div>
               <div className="figma-kpi-sub">
-                <span>Sentinel-1 SAR</span>
+                <span>Prototype scenario</span>
                 <span>•</span>
                 <button 
                   type="button"
                   onClick={() => setShowEMSR927Compare(true)}
                   style={{ background: 'none', border: 'none', padding: 0, color: '#1e783e', fontWeight: '700', cursor: 'pointer', fontSize: '10.5px' }}
-                  title="Copernicus DEM 30m slope-masked input. Click to inspect post-hoc benchmark verification."
+                  title="EMSR927 is a validation reference only; no agreement score is computed"
                 >
-                  Copernicus DEM
+                  EMSR927 validation only
                 </button>
               </div>
             </div>
@@ -808,7 +808,7 @@ export default function DashboardView({
                         track: "Illustrative scenario (no SAR scenes connected)",
                         deltaDb: "Not computed",
                         demMask: "No DEM connected",
-                        details: "Illustrative prototype envelope; not a measured inundation area. Verified EMS products and date-attributed regional imagery are available in Compare."
+                        details: "Illustrative prototype envelope; not a measured inundation area. Copernicus DEM terrain layers and date-attributed regional imagery are available in Compare."
                       });
                     }
                   }}
@@ -1437,7 +1437,7 @@ export default function DashboardView({
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShieldCheck color="#1e783e" size={20} />
                 <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0a2213', margin: 0, letterSpacing: '-0.015em' }}>
-                  Case Study Verification: August 2026 Trishuli Flood (EMSR927)
+                  Case Study Verification: August 2026 Trishuli Flood
                 </h3>
               </div>
               <button 
@@ -1448,11 +1448,7 @@ export default function DashboardView({
               </button>
             </div>
 
-            <div style={{ backgroundColor: 'rgba(30, 120, 62, 0.08)', border: '1px solid rgba(30, 120, 62, 0.25)', borderRadius: '10px', padding: '10px 14px', marginTop: '14px', fontSize: '11.5px', color: '#0a2213', lineHeight: '1.5' }}>
-              <strong style={{ color: '#1e783e' }}>Data Rules Compliance:</strong> Copernicus DEM (WorldDEM-30) is the verified terrain elevation input. Under competition rules, published damage maps such as Copernicus EMS (EMSR927) and UNOSAT are <em>strictly prohibited as operational inputs</em> and may only be consulted post-hoc to verify output results.
-            </div>
-
-            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '12px' }}>
+            <p style={{ fontSize: '12px', color: '#1f422b', lineHeight: '1.5', marginTop: '14px' }}>
               No independent change-detection result is connected, so agreement with the Copernicus EMSR927 reference has not been computed. The values shown in earlier prototype drafts are not verified and are intentionally withheld.
             </p>
 

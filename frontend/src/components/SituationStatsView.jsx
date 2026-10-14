@@ -86,8 +86,8 @@ export default function SituationStatsView() {
           </div>
         </div>
 
-        <div role="note" style={{ padding: '12px 16px', background: '#f2f7f4', border: '1px solid rgba(30, 120, 62, 0.25)', color: '#0a2213', fontSize: '12px', lineHeight: 1.5, borderRadius: '12px' }}>
-          <strong>Data Rules Adherence:</strong> Allowed inputs are Sentinel-1, Sentinel-2, Copernicus DEM (WorldDEM-30), and pre-event OSM (&le; 2026-07-27). Copernicus EMS (EMSR927) is strictly not an operational input and may only be used post-hoc to verify results.
+        <div role="note" style={{ padding: '12px 16px', background: '#fff8e7', border: '1px solid #e6c87a', color: '#624b12', fontSize: '12px', lineHeight: 1.5 }}>
+          No validated satellite-pass catalogue, derived impact measurements, or EMSR927 concordance analysis is connected. Prototype values are withheld rather than presented as observations.
         </div>
 
         <button 
@@ -107,7 +107,7 @@ export default function SituationStatsView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Satellite size={16} color="#1e783e" />
             <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>
-              Sentinel-1 Passes & Copernicus DEM Input (Trishuli AOI)
+              Sentinel-1 Passes (Trishuli AOI)
             </strong>
           </div>
           <span style={{ fontSize: '10.5px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>
@@ -140,7 +140,7 @@ export default function SituationStatsView() {
               )}
               {passes.map((p) => {
                 const isPost = p.id === 'PASS-03';
-                const isDem = p.id === 'PASS-05';
+                const isBenchmark = p.id === 'PASS-05';
                 const isObscured = p.id === 'PASS-04';
 
                 return (
@@ -148,7 +148,7 @@ export default function SituationStatsView() {
                     key={p.id} 
                     style={{ 
                       borderBottom: '1px solid rgba(10, 34, 19, 0.06)',
-                      backgroundColor: isPost ? 'rgba(255, 59, 48, 0.04)' : (isDem ? 'rgba(30, 120, 62, 0.05)' : (isObscured ? '#f6faf7' : '#FFFFFF'))
+                      backgroundColor: isPost ? 'rgba(255, 59, 48, 0.04)' : (isBenchmark ? 'rgba(52, 199, 89, 0.05)' : (isObscured ? '#f6faf7' : '#FFFFFF'))
                     }}
                   >
                     <td style={{ padding: '10px 12px', fontWeight: '700', color: '#0a2213' }}>{p.id}</td>
@@ -158,12 +158,12 @@ export default function SituationStatsView() {
                       {p.orbit_track > 0 ? (
                         <span style={{ color: '#1e783e', fontWeight: '600' }}>Track #{p.orbit_track}</span>
                       ) : (
-                        <span style={{ color: '#52735d' }}>Optical / DEM N/A</span>
+                        <span style={{ color: '#52735d' }}>Optical N/A</span>
                       )}
                     </td>
                     <td style={{ padding: '10px 12px', color: '#52735d' }}>{p.polarization}</td>
                     <td style={{ padding: '10px 12px', fontWeight: '600', color: p.mean_backscatter_db < -15 ? '#ff3b30' : '#0a2213' }}>
-                      {p.mean_backscatter_db !== 0.0 ? `${p.mean_backscatter_db} dB` : 'N/A (Optical/DEM)'}
+                      {p.mean_backscatter_db !== 0.0 ? `${p.mean_backscatter_db} dB` : 'N/A (Optical)'}
                     </td>
                     <td style={{ padding: '10px 12px', fontWeight: '700', color: p.water_extent_km2 > 10 ? '#ff3b30' : '#1e783e' }}>
                       {p.water_extent_km2 > 0 ? `${p.water_extent_km2} km²` : 'Obscured'}
@@ -179,9 +179,9 @@ export default function SituationStatsView() {
                         fontWeight: '600',
                         padding: '2px 8px',
                         borderRadius: '9999px',
-                        backgroundColor: isPost ? 'rgba(255, 59, 48, 0.1)' : (isDem ? 'rgba(30, 120, 62, 0.12)' : '#f2f7f4'),
-                        color: isPost ? '#ff3b30' : (isDem ? '#1e783e' : '#52735d'),
-                        border: isPost ? '1px solid rgba(255, 59, 48, 0.2)' : (isDem ? '1px solid rgba(30, 120, 62, 0.25)' : '1px solid rgba(10, 34, 19, 0.08)')
+                        backgroundColor: isPost ? 'rgba(255, 59, 48, 0.1)' : (isBenchmark ? 'rgba(30, 120, 62, 0.12)' : '#f2f7f4'),
+                        color: isPost ? '#ff3b30' : (isBenchmark ? '#1e783e' : '#52735d'),
+                        border: isPost ? '1px solid rgba(255, 59, 48, 0.2)' : (isBenchmark ? '1px solid rgba(30, 120, 62, 0.25)' : '1px solid rgba(10, 34, 19, 0.08)')
                       }}>
                         {p.status}
                       </span>
@@ -194,13 +194,13 @@ export default function SituationStatsView() {
         </div>
       </div>
 
-      {/* Section 2: Core Impact Evolution Matrix (Baseline vs Peak vs EMSR927) */}
+      {/* Section 2: Core Impact Evolution Matrix*/}
       <div className="grey-card" style={{ padding: '18px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid rgba(10, 34, 19, 0.08)', paddingBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <TrendingUp size={16} color="#1e783e" />
             <strong style={{ fontSize: '13.5px', color: '#0a2213', letterSpacing: '-0.01em' }}>
-              EMSR927 Verification Reference (Post-Hoc Check Only — Not An Input)
+              EMSR927 Post-Hoc Verification Reference (Check Only — Prohibited as Input)
             </strong>
           </div>
           <span style={{ fontSize: '10.5px', color: '#1e783e', fontWeight: '600', backgroundColor: 'rgba(30, 120, 62, 0.12)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(30, 120, 62, 0.25)' }}>

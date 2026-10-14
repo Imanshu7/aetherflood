@@ -102,6 +102,13 @@ export const HISTORICAL_NEPAL_INCIDENT_OVERVIEW = {
         'Supplementary source link; specific dated photographs and reuse terms have not been verified in this application.'
     },
     {
+      id: 'emsr927',
+      label: 'Post-hoc validation reference (EMSR927 - check only)',
+      date: 'August 2026 activation',
+      url: 'https://mapping.emergency.copernicus.eu/activations/EMSR927/',
+      note: 'Post-hoc verification reference only. Under competition rules, published damage maps are prohibited as inputs and may only be used after the fact to check results.'
+    },
+    {
       id: 'eu-sentinel',
       label: 'EU Space Support Office Sentinel-2 comparison',
       date: '12 and 27 August 2026 acquisitions',

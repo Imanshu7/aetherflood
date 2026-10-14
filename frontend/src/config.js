@@ -7,18 +7,18 @@
  * live only in backend environment variables.
  */
 
-const rawBase = import.meta.env.VITE_API_BASE_URL;
+const rawBase = import.meta.env?.VITE_API_BASE_URL;
 
-// In Vercel multi-service deployment, frontend and backend share the same project domain.
-// When VITE_API_BASE_URL is unset or empty in production, use relative paths ('').
-// In local development, default to 'http://127.0.0.1:8000'.
+// In development, default to local FastAPI server (http://127.0.0.1:8000).
+// In production (Vercel multi-service deployment where /api rewrites to backend),
+// default to relative path "" unless VITE_API_BASE_URL is explicitly supplied.
 export const API_BASE_URL = (
   rawBase !== undefined && rawBase !== ''
     ? rawBase
-    : (import.meta.env.PROD ? '' : 'http://127.0.0.1:8000')
+    : (import.meta.env?.DEV ? 'http://127.0.0.1:8000' : '')
 ).replace(/\/+$/, '');
 
-export const IS_PRODUCTION_API = API_BASE_URL === '' || !/localhost|127\.0\.0\.1/.test(API_BASE_URL);
+export const IS_PRODUCTION_API = !/localhost|127\.0\.0\.1/.test(API_BASE_URL);
 
 /** Build a backend URL from a path, preserving any leading slash. */
 export function apiUrl(path) {

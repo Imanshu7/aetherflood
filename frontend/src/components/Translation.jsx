@@ -124,13 +124,13 @@ const EMPHASIS_PHRASES = {
     'Pasang Lhamu Highway', 'Nepal–Tibet', 'Budhi Gandaki', 'Bhote Koshi',
     '11 October 2026', '26 August 2026', '12 August 2026', '27 August 2026',
     'Syapru Besi', 'Betrawati', 'Gerkhu', 'Trishuli', 'Chumchet',
-    'NH09', 'ICIMOD',
+    'EMSR927', 'NH09', 'ICIMOD',
   ],
   ne: [
     'पसाङ ल्हामु राजमार्ग', 'नेपाल–तिब्बत', 'बुढीगण्डकी', 'भोटेकोसी',
     '११ अक्टोबर २०२६', '२६ अगस्ट २०२६', '१२ अगस्ट २०२६', '२७ अगस्ट २०२६',
     'स्याप्रुवेशी', 'बेत्रावती', 'गेर्खु', 'त्रिशूली', 'चुम्चेत',
-    'NH09', 'ICIMOD',
+    'EMSR927', 'NH09', 'ICIMOD',
   ],
 };
 

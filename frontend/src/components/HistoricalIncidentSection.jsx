@@ -62,7 +62,7 @@ export default function HistoricalIncidentSection({ onNavigateToCompare, lang = 
           <div><dt>{t.historical.metadataIncident}</dt><dd>{lang === 'ne' ? '२६ अगस्ट २०२६' : '26 August 2026'}</dd></div>
           <div><dt>{t.historical.metadataHazard}</dt><dd>{at(1)}</dd></div>
           <div><dt>{t.historical.metadataCategory}</dt><dd>{at(2)}</dd></div>
-          <div><dt>{t.historical.metadataMapping}</dt><dd>Sentinel-2 optical comparison (authorized input)</dd></div>
+          <div><dt>{t.historical.metadataMapping}</dt><dd>Copernicus DEM & Post-Hoc Check ({incident.activationCode})</dd></div>
         </dl>
 
         <IncidentSectionHeading

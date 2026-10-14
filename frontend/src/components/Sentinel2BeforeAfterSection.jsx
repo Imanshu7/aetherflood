@@ -78,7 +78,7 @@ function PairComparison({ pair, selectedLocation }) {
           <div className="ems-compare-eyebrow">Sentinel-2 L1C · True Color</div>
           <h3 id={`${pair.id}-title`}>{pair.title}</h3>
           <p>{pair.description}</p>
-          {selectedLocation && <p className="sentinel2-selected-location">Selected EMS location: {selectedLocation}</p>}
+          {selectedLocation && <p className="sentinel2-selected-location">Selected DEM / Sentinel location: {selectedLocation}</p>}
         </div>
         <button
           type="button"
